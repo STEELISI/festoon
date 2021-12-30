@@ -1,0 +1,6 @@
+[submodule "lib/axis"]
+	path = lib/axis
+	url = https://github.com/alexforencich/verilog-axis
+[submodule "lib/axi"]
+	path = lib/axi
+	url = https://github.com/alexforencich/verilog-axi
