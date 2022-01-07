@@ -2,15 +2,17 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstdint>
 #include <inttypes.h>
 #include <string.h>
 #include <sys/queue.h>
 #include <stdarg.h>
 #include <errno.h>
 #include <getopt.h>
+
+#include <verilated.h>
 
 #include <netinet/in.h>
 #include <linux/if.h>
@@ -41,6 +43,8 @@
 #include <rte_cycles.h>
 #include <rte_malloc.h>
 #include <rte_kni.h>
+
+#include "Vtop.h"
 
 /* Macros for printing using RTE_LOG */
 #define RTE_LOGTYPE_APP RTE_LOGTYPE_USER1
