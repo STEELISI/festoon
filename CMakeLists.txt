@@ -12,21 +12,7 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_C_FLAGS -mssse3)
 set(CMAKE_CXX_FLAGS -mssse3)
 
-add_library(Vtop)
-verilate(Vtop
-    THREADS OPT_SLOW
-    SOURCES
-      verilog/mqnic/mqnic_core.v
-      verilog/mqnic/mqnic_tx_scheduler_block_rr_tdma.v
-    INCLUDE_DIRS
-      verilog/mqnic
-      lib/axi/rtl
-      lib/axis/rtl
-      lib/pcie/rtl
-      lib/eth/rtl
-    TOP_MODULE mqnic_core
-    VERILATOR_ARGS -Wno-fatal
-)
+include(verilog/CMakeLists.txt)
 
 add_executable(festoon wrapper/main.cpp)
 target_include_directories(festoon PRIVATE ${VERILATOR_ROOT}/include)

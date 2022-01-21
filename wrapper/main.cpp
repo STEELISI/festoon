@@ -12,8 +12,6 @@
 #include <errno.h>
 #include <getopt.h>
 
-#include <verilated.h>
-
 #include <netinet/in.h>
 #include <linux/if.h>
 #include <linux/if_tun.h>
@@ -44,6 +42,7 @@
 #include <rte_malloc.h>
 #include <rte_kni.h>
 
+#include <verilated.h>
 #include "Vtop.h"
 
 /* Macros for printing using RTE_LOG */
