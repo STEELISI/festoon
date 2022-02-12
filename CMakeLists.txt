@@ -14,6 +14,11 @@ set(CMAKE_CXX_FLAGS -mssse3)
 
 include(verilog/CMakeLists.txt)
 
+add_library(rte_top wrapper/rte_top.cpp)
+set_property(TARGET rte_top PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+target_link_libraries(rte_top -static Threads::Threads ${DPDK_LIBRARIES} Vtop)
+
 add_executable(festoon wrapper/main.cpp)
+set_property(TARGET festoon PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 target_include_directories(festoon PRIVATE ${VERILATOR_ROOT}/include)
-target_link_libraries(festoon Threads::Threads ${DPDK_LIBRARIES} Vtop)
+target_link_libraries(festoon -static Threads::Threads ${DPDK_LIBRARIES} rte_top)

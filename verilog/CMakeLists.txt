@@ -11,10 +11,7 @@ verilate(Vtop
     VERILATOR_ARGS -Wno-fatal
     SOURCES
       verilog/top.v
-      verilog/mqnic/mqnic_core.v
-      verilog/mqnic/mqnic_tx_scheduler_block_rr_tdma.v
     INCLUDE_DIRS
-      verilog/mqnic
       lib/axi/rtl
       lib/axis/rtl
       lib/pcie/rtl
