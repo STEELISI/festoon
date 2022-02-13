@@ -1,14 +1,10 @@
-#include "rte_top.h"
-
-#include <rte_mbuf.h>
-#include <rte_ring.h>
+#include "festoon_top.h"
 
 #include "Vtop.h"
+#include "festoon_xgmii.h"
 #include "params.h"
 
 Vtop *top;
-
-struct rte_ring *xgmii_tx_queue, *xgmii_rx_queue;
 
 // Temp. output XGMII frame for use by verilator_top_worker
 struct XgmiiFrame *fr_out = new XgmiiFrame();
@@ -17,11 +13,6 @@ struct XgmiiFrame *fr_out = new XgmiiFrame();
 vluint64_t main_time = 0;
 
 void init_verilated_top() {
-  // Generate TX and RX queues
-  xgmii_tx_queue = rte_ring_create("XGMII transmit queue", 1024 * 8,
-                                   rte_socket_id(), RING_F_SC_DEQ);
-  xgmii_rx_queue = rte_ring_create("XGMII recieve queue", 1024 * 8,
-                                   rte_socket_id(), RING_F_SC_DEQ);
   top = new Vtop;
 
   top->clk = 0;
@@ -41,8 +32,8 @@ void init_verilated_top() {
 }
 
 // Run the Verilator module as a worker thread
-void verilator_top_worker(struct rte_ring *worker_tx_ring,
-                          struct rte_ring *worker_rx_ring) {
+void verilator_top_worker(rte_ring *xgmii_tx_queue,
+                          rte_ring *xgmii_rx_queue) {
   struct XgmiiFrame *fr_in;
 
   // Loop for a clock cycle and deque + queue XGMII frames
@@ -51,7 +42,7 @@ void verilator_top_worker(struct rte_ring *worker_tx_ring,
 
     if ((main_time % 10) == 1) {
       // Read RTE frame each rising clock
-      rte_ring_dequeue(worker_rx_ring, (void **)fr_in);
+      rte_ring_dequeue(xgmii_rx_queue, (void **)fr_in);
 
       // Convert frame into Verilator inputs
       top->eth_in_xgmii_ctrl = fr_in->ctrl;
@@ -66,7 +57,7 @@ void verilator_top_worker(struct rte_ring *worker_tx_ring,
       top->eth_in_xgmii_data = fr_out->data;
 
       // Transmit RTE frame each rising clock
-      rte_ring_enqueue(worker_rx_ring, (void **)fr_out);
+      rte_ring_enqueue(xgmii_tx_queue, (void **)fr_out);
 
       // Toggle clock
       top->clk = 0;
@@ -79,7 +70,6 @@ void verilator_top_worker(struct rte_ring *worker_tx_ring,
 
 // Free Verilator model and buffers
 void stop_verilated_top() {
-  rte_ring_free(xgmii_tx_queue);
-  rte_ring_free(xgmii_rx_queue);
+  top->final();
   delete top;
 }

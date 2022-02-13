@@ -12,9 +12,6 @@ verilate(Vtop
     SOURCES
       verilog/top.v
     INCLUDE_DIRS
-      lib/axi/rtl
-      lib/axis/rtl
-      lib/pcie/rtl
-      lib/eth/rtl
+      verilog/
     TOP_MODULE top
 )

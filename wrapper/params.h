@@ -42,13 +42,14 @@
  * Structure of port parameters
  */
 struct kni_port_params {
-  uint16_t port_id;                 // Port ID
-  unsigned lcore_rx;                // lcore ID for RX
-  unsigned lcore_tx;                // lcore ID for TX
-  unsigned lcore_worker_translate;  // lcore ID for XGMII translation worker
-  unsigned lcore_worker_vtop;       // lcore ID for Verilator worker
-  uint32_t nb_lcore_k;  // Number of lcores for KNI multi kernel threads
-  uint32_t nb_kni;      // Number of KNI devices to be created
+  uint16_t port_id;            // Port ID
+  unsigned lcore_rx;           // lcore ID for RX
+  unsigned lcore_tx;           // lcore ID for TX
+  unsigned lcore_mii_tr_rx;    // lcore ID for XGMII recieve worker
+  unsigned lcore_mii_tr_tx;    // lcore ID for XGMII transmit worker
+  unsigned lcore_worker_vtop;  // lcore ID for Verilator worker
+  uint32_t nb_lcore_k;         // Number of lcores for KNI multi kernel threads
+  uint32_t nb_kni;             // Number of KNI devices to be created
   unsigned lcore_k[KNI_MAX_KTHREAD];     // lcore ID list for kthreads
   struct rte_kni *kni[KNI_MAX_KTHREAD];  // KNI context pointers
 } __rte_cache_aligned;
