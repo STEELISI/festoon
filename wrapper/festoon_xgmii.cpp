@@ -24,31 +24,42 @@ void init_xgmii_worker(rte_ring *worker_tx_ring, rte_ring *worker_rx_ring) {
                                         rte_socket_id(), RING_F_SC_DEQ);
 }
 
-// Read from 
+// Read from RX ring and send to FPGA
 void xgmii_worker_rx(kni_interface_stats *kni_stats, rte_ring *worker_rx_ring) {
-  uint8_t i;
+  uint8_t i, it;
   rte_mbuf *pkts_burst[PKT_BURST_SZ] __rte_cache_aligned;
-  CData *xgm_ctrl_buf[PKT_BURST_SZ * MAX_PACKET_SZ / 64 + 1] __rte_cache_aligned;
-  QData *xgm_data_buf[PKT_BURST_SZ * MAX_PACKET_SZ / 64 + 1] __rte_cache_aligned;
+  CData *xgm_ctrl_buf[XGMII_BURST_SZ] __rte_cache_aligned;
+  QData *xgm_data_buf[XGMII_BURST_SZ] __rte_cache_aligned;
   int32_t f_stop, f_pause;
   uint16_t port_id;
-  unsigned int nb_tx, nb_rx;
-
-  // -1 is not set, 1 is NXDOMAIN, 0 is normal
-  int8_t packet_status[PKT_BURST_SZ] = {-1};
+  unsigned int nb_tx, nb_rx, xgm_buf_counter = 0;
 
   // Burst RX from ring
-  nb_rx = rte_ring_dequeue_burst(worker_rx_ring, (void **)pkts_burst, PKT_BURST_SZ,
-                                 nullptr);
+  nb_rx = rte_ring_dequeue_burst(worker_rx_ring, (void **)pkts_burst,
+                                 PKT_BURST_SZ, nullptr);
   if (unlikely(nb_rx > PKT_BURST_SZ)) {
     RTE_LOG(ERR, APP, "Error receiving from worker\n");
     return;
   }
 
   // Create rte_mbuf packets from XGMII packets
-  *xgm_data_buf[0] = 0xd5555555555555fb;
-  *xgm_ctrl_buf[0] = 0x00011111;
   for (i = 0; i < nb_rx; i++) {
+    // Send packet begin control bits
+    *xgm_data_buf[xgm_buf_counter] = 0xd5555555555555fb;
+    *xgm_ctrl_buf[xgm_buf_counter] = 0b00000001;
+    xgm_buf_counter++;
+
+    // Go through packet and write every 64 bits to XGM buffer
+    for (it = 0; it < rte_pktmbuf_pkt_len(pkts_burst[i]); it += 64) {
+      rte_mov64((uint8_t *)xgm_data_buf[xgm_buf_counter],
+                (uint8_t *) (&pkts_burst[i] + it));
+      *xgm_ctrl_buf[xgm_buf_counter] = 0b11111111;
+      xgm_buf_counter++;
+    }
+
+    // Packet end control bits
+    *xgm_data_buf[xgm_buf_counter] = 0x07070707070707fd;
+    *xgm_ctrl_buf[xgm_buf_counter] = 0b11111111;
   }
 
   // Pass DPDK packets to xgmii_rx_queue
@@ -69,14 +80,16 @@ void xgmii_worker_tx(kni_interface_stats *kni_stats, rte_ring *worker_tx_ring) {
   unsigned int nb_tx, nb_rx, xgm_buf_counter = 1;
   uint32_t nb_kni;
   rte_mbuf *pkts_burst[PKT_BURST_SZ] __rte_cache_aligned;
-  CData *xgm_ctrl_buf[PKT_BURST_SZ] __rte_cache_aligned;
-  QData *xgm_data_buf[PKT_BURST_SZ] __rte_cache_aligned;
+  CData *
+      xgm_ctrl_buf[PKT_BURST_SZ * (MAX_PACKET_SZ / 64 + 2)] __rte_cache_aligned;
+  QData *
+      xgm_data_buf[PKT_BURST_SZ * (MAX_PACKET_SZ / 64 + 2)] __rte_cache_aligned;
 
   // Burst rx from kni
-  nb_rx = rte_ring_dequeue_burst(get_xgmii_tx_queue_ctrl(), (void **)xgm_ctrl_buf,
-                                 PKT_BURST_SZ, nullptr);
-  nb_rx = rte_ring_dequeue_burst(get_xgmii_tx_queue_data(), (void **)xgm_data_buf,
-                                 PKT_BURST_SZ, nullptr);
+  nb_rx = rte_ring_dequeue_burst(get_xgmii_tx_queue_ctrl(),
+                                 (void **)xgm_ctrl_buf, PKT_BURST_SZ, nullptr);
+  nb_rx = rte_ring_dequeue_burst(get_xgmii_tx_queue_data(),
+                                 (void **)xgm_data_buf, PKT_BURST_SZ, nullptr);
   if (unlikely(nb_rx > PKT_BURST_SZ)) {
     RTE_LOG(ERR, APP, "Error receiving from KNI\n");
     return;
