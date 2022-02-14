@@ -91,8 +91,8 @@ print_stats(void)
     if (!kni_port_params_array[i])
       continue;
 
-    printf("%7d %10u/%2u %13"PRIu64" %13"PRIu64" %13"PRIu64" "
-              "%13"PRIu64"\n", i,
+    printf("%7d %10u/%2u %13" PRIu64 " %13" PRIu64 " %13" PRIu64 " "
+              "%13" PRIu64"\n ", i,
           kni_port_params_array[i]->lcore_rx,
           kni_port_params_array[i]->lcore_tx,
             kni_stats[i].rx_packets,
@@ -326,7 +326,7 @@ main_loop(__rte_unused void *arg)
         break;
       if (f_pause)
         continue;
-      verilator_top_worker(get_xgmii_tx(), get_xgmii_rx());
+      verilator_top_worker();
     }
   } else
     RTE_LOG(INFO, APP, "Lcore %u has nothing to do\n", lcore_id);

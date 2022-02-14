@@ -10,7 +10,6 @@ void init_verilated_top();
 void stop_verilated_top();
 
 // Run the Verilator module as a worker thread
-void verilator_top_worker(rte_ring *xgmii_tx_queue,
-                          rte_ring *xgmii_rx_queue);
+void verilator_top_worker();
 
 #endif

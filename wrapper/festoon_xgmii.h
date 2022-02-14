@@ -5,12 +5,6 @@
 #include "verilated.h"
 #include "params.h"
 
-// Struct for building our frame buffers
-struct XgmiiFrame {
-  CData ctrl;
-  QData data;
-};
-
 void init_xgmii_worker(rte_ring *worker_tx_ring, rte_ring *worker_rx_ring);
 
 void stop_xgmii_worker(rte_ring *worker_tx_ring, rte_ring *worker_rx_ring);
@@ -21,8 +15,9 @@ void xgmii_worker_rx(kni_interface_stats *kni_stats,
 void xgmii_worker_tx(kni_interface_stats *kni_stats,
                      rte_ring *worker_tx_ring);
 
-rte_ring *get_xgmii_tx();
-
-rte_ring *get_xgmii_rx();
+rte_ring *get_xgmii_tx_queue_ctrl();
+rte_ring *get_xgmii_rx_queue_ctrl();
+rte_ring *get_xgmii_tx_queue_data();
+rte_ring *get_xgmii_rx_queue_data();
 
 #endif
