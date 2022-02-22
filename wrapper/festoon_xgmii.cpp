@@ -3,6 +3,8 @@
 #include <rte_byteorder.h>
 #include <rte_mbuf.h>
 
+#include <stdexcept>
+
 rte_ring *xgmii_tx_queue_ctrl, *xgmii_rx_queue_ctrl, *xgmii_tx_queue_data,
     *xgmii_rx_queue_data;
 
@@ -32,7 +34,7 @@ void xgmii_worker_rx(kni_interface_stats *kni_stats, rte_ring *worker_rx_ring) {
   QData *xgm_data_buf[XGMII_BURST_SZ] __rte_cache_aligned;
   int32_t f_stop, f_pause;
   uint16_t port_id;
-  unsigned int nb_tx, nb_rx, xgm_buf_counter = 0;
+  unsigned int nb_tx_ctrl, nb_tx_data, nb_rx, xgm_buf_counter = 0;
 
   // Burst RX from ring
   nb_rx = rte_ring_dequeue_burst(worker_rx_ring, (void **)pkts_burst,
@@ -52,7 +54,7 @@ void xgmii_worker_rx(kni_interface_stats *kni_stats, rte_ring *worker_rx_ring) {
     // Go through packet and write every 64 bits to XGM buffer
     for (it = 0; it < rte_pktmbuf_pkt_len(pkts_burst[i]); it += 64) {
       rte_mov64((uint8_t *)xgm_data_buf[xgm_buf_counter],
-                (uint8_t *) (&pkts_burst[i] + it));
+                (uint8_t *)(&pkts_burst[i]) + it);
       *xgm_ctrl_buf[xgm_buf_counter] = 0b11111111;
       xgm_buf_counter++;
     }
@@ -63,51 +65,88 @@ void xgmii_worker_rx(kni_interface_stats *kni_stats, rte_ring *worker_rx_ring) {
   }
 
   // Pass DPDK packets to xgmii_rx_queue
-  nb_tx = rte_ring_enqueue_burst(get_xgmii_rx_queue_ctrl(), (void **)pkts_burst,
-                                 PKT_BURST_SZ, nullptr);
-  nb_tx = rte_ring_enqueue_burst(get_xgmii_rx_queue_data(), (void **)pkts_burst,
-                                 PKT_BURST_SZ, nullptr);
+  nb_tx_ctrl = rte_ring_enqueue_burst(
+      get_xgmii_rx_queue_ctrl(), (void **)pkts_burst, PKT_BURST_SZ, nullptr);
+  nb_tx_data = rte_ring_enqueue_burst(
+      get_xgmii_rx_queue_data(), (void **)pkts_burst, PKT_BURST_SZ, nullptr);
 
-  if (unlikely(nb_tx < nb_rx)) {
+  if (unlikely(nb_tx_data < xgm_buf_counter) ||
+      unlikely(nb_tx_data != nb_tx_ctrl)) {
     // Free mbufs not tx to xgmii_rx_queue
-    kni_stats[port_id].rx_dropped += nb_rx - nb_tx;
+    kni_stats[port_id].rx_dropped += xgm_buf_counter - nb_tx_data;
   }
 }
 
 void xgmii_worker_tx(kni_interface_stats *kni_stats, rte_ring *worker_tx_ring) {
-  uint8_t i, it, iter;
+  uint8_t i, it;
   uint16_t port_id;
-  unsigned int nb_tx, nb_rx, xgm_buf_counter = 1;
+  unsigned int nb_tx, nb_rx_ctrl, nb_rx_data, pkt_buf_counter = -1,
+                                              rte_pkt_index = 0;
+  bool packet_start_entered = false;
   uint32_t nb_kni;
   rte_mbuf *pkts_burst[PKT_BURST_SZ] __rte_cache_aligned;
-  CData *
-      xgm_ctrl_buf[PKT_BURST_SZ * (MAX_PACKET_SZ / 64 + 2)] __rte_cache_aligned;
-  QData *
-      xgm_data_buf[PKT_BURST_SZ * (MAX_PACKET_SZ / 64 + 2)] __rte_cache_aligned;
+  CData *xgm_ctrl_buf[XGMII_BURST_SZ] __rte_cache_aligned;
+  QData *xgm_data_buf[XGMII_BURST_SZ] __rte_cache_aligned;
 
   // Burst rx from kni
-  nb_rx = rte_ring_dequeue_burst(get_xgmii_tx_queue_ctrl(),
-                                 (void **)xgm_ctrl_buf, PKT_BURST_SZ, nullptr);
-  nb_rx = rte_ring_dequeue_burst(get_xgmii_tx_queue_data(),
-                                 (void **)xgm_data_buf, PKT_BURST_SZ, nullptr);
-  if (unlikely(nb_rx > PKT_BURST_SZ)) {
-    RTE_LOG(ERR, APP, "Error receiving from KNI\n");
+  nb_rx_ctrl =
+      rte_ring_dequeue_burst(get_xgmii_tx_queue_ctrl(), (void **)xgm_ctrl_buf,
+                             XGMII_BURST_SZ, nullptr);
+  nb_rx_data =
+      rte_ring_dequeue_burst(get_xgmii_tx_queue_data(), (void **)xgm_data_buf,
+                             XGMII_BURST_SZ, nullptr);
+  if (unlikely(nb_rx_data > XGMII_BURST_SZ) ||
+      unlikely(nb_rx_data != nb_rx_ctrl)) {
+    RTE_LOG(ERR, APP, "Error receiving from Verilator\n");
     return;
   }
 
-  // Create DPDk packets
-  for (it = 0; it < nb_rx; it++) {
-    for (iter = 0; iter < rte_pktmbuf_pkt_len(pkts_burst[nb_rx]); iter += 64)
-      xgm_buf_counter++;
+  // Create DPDK packets from XGMII packets
+  for (i = 0; i < nb_rx_data; i++) {
+    // Loop through each byte of data
+    for (it = 0; it < 8; it++) {
+      // Check control bit for data
+      if ((*xgm_ctrl_buf[i] & (1 << it)) == 0) {
+        // Is data, just move over
+        rte_memcpy((uint8_t *)(&xgm_data_buf[i]),
+                   (uint8_t *)xgm_data_buf[pkt_buf_counter] + rte_pkt_index, 1);
+        rte_pkt_index += 1;
+      } else {
+        // Control bit, check which one it is
+        if (*(xgm_data_buf[i] + it) == 0xfb) {
+          // packet start, switch to next packet buffer
+          if (packet_start_entered)
+            throw std::logic_error("Multiple packet starts detected");
+          else
+            packet_start_entered = true;
+
+          pkt_buf_counter++;
+        } else if (*(xgm_data_buf[i] + it) == 0xfd) {
+          // end of packet, reset indexing
+          if (!packet_start_entered)
+            throw std::logic_error("Multiple end of packet signals detected");
+          else
+            packet_start_entered = false;
+
+          rte_pkt_index = 0;
+        } else if (*(xgm_data_buf[i] + it) == 0x07) {
+          // Idle bit, just ignore
+          continue;
+        } else {
+          // Unsupported operation, ignore again
+          continue;
+        }
+      }
+    }
   }
 
   // Burst tx to ring with replies
   nb_tx = rte_ring_enqueue_burst(worker_tx_ring, (void **)pkts_burst,
                                  PKT_BURST_SZ * MAX_PACKET_SZ / 64, nullptr);
   if (nb_tx) kni_stats[port_id].tx_packets += nb_tx;
-  if (unlikely(nb_tx < nb_rx)) {
+  if (unlikely(nb_tx < nb_rx_data)) {
     // Free mbufs not tx to NIC
-    kni_stats[port_id].tx_dropped += nb_rx - nb_tx;
+    kni_stats[port_id].tx_dropped += nb_rx_data - nb_tx;
   }
 }
 

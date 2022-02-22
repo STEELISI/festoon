@@ -151,7 +151,7 @@ kni_burst_free_mbufs(struct rte_mbuf **pkts, unsigned num)
  * Interface to burst rx and enqueue mbufs into rx_q
  */
 static void
-kni_ingress(struct kni_port_params *p)
+eth_ingress(struct kni_port_params *p)
 {
   uint8_t i;
   uint16_t port_id;
@@ -171,12 +171,9 @@ kni_ingress(struct kni_port_params *p)
       RTE_LOG(ERR, APP, "Error receiving from eth\n");
       return;
     }
-    /* Burst tx to kni */
-    num = rte_kni_tx_burst(p->kni[i], pkts_burst, nb_rx);
-    if (num)
-      kni_stats[port_id].rx_packets += num;
-
-    rte_kni_handle_request(p->kni[i]);
+    /* Burst tx to worker_rx_ring */
+    num = rte_ring_enqueue_burst(worker_rx_ring, (void **)pkts_burst, nb_rx,
+                                 NULL);
     if (unlikely(num < nb_rx)) {
       /* Free mbufs not tx to kni interface */
       kni_burst_free_mbufs(&pkts_burst[num], nb_rx - num);
@@ -189,7 +186,7 @@ kni_ingress(struct kni_port_params *p)
  * Interface to dequeue mbufs from tx_q and burst tx
  */
 static void
-kni_egress(struct kni_port_params *p)
+eth_egress(struct kni_port_params *p)
 {
   uint8_t i;
   uint16_t port_id;
@@ -204,7 +201,8 @@ kni_egress(struct kni_port_params *p)
   port_id = p->port_id;
   for (i = 0; i < nb_kni; i++) {
     /* Burst rx from kni */
-    num = rte_kni_rx_burst(p->kni[i], pkts_burst, PKT_BURST_SZ);
+    num = rte_ring_dequeue_burst(worker_tx_ring, (void **)pkts_burst,
+                                 PKT_BURST_SZ, nullptr);
     if (unlikely(num > PKT_BURST_SZ)) {
       RTE_LOG(ERR, APP, "Error receiving from KNI\n");
       return;
@@ -274,7 +272,7 @@ main_loop(__rte_unused void *arg)
         break;
       if (f_pause)
         continue;
-      kni_ingress(kni_port_params_array[i]);
+      eth_ingress(kni_port_params_array[i]);
     }
   } else if (flag == LCORE_TX) {
     RTE_LOG(INFO, APP, "Lcore %u is writing to port %d\n",
@@ -287,7 +285,7 @@ main_loop(__rte_unused void *arg)
         break;
       if (f_pause)
         continue;
-      kni_egress(kni_port_params_array[i]);
+      eth_ingress(kni_port_params_array[i]);
     }
   } else if (flag == LCORE_MII_TR_TX) {
     RTE_LOG(INFO, APP, "Lcore %u is writing to port %d\n",
