@@ -1,6 +1,7 @@
 #include "festoon_xgmii.h"
 
 #include <rte_byteorder.h>
+#include <rte_malloc.h>
 #include <rte_mbuf.h>
 
 #include <stdexcept>
@@ -51,10 +52,9 @@ void xgmii_worker_rx(kni_interface_stats *kni_stats, rte_ring *worker_rx_ring) {
     *xgm_ctrl_buf[xgm_buf_counter] = 0b00000001;
     xgm_buf_counter++;
 
-    // Go through packet and write every 64 bits to XGM buffer
+    // Go through packet and move every 64 bits to XGM data buffer
     for (it = 0; it < rte_pktmbuf_pkt_len(pkts_burst[i]); it += 64) {
-      rte_mov64((uint8_t *)xgm_data_buf[xgm_buf_counter],
-                (uint8_t *)(&pkts_burst[i]) + it);
+      xgm_data_buf[xgm_buf_counter] = (QData *)(pkts_burst[i]) + it;
       *xgm_ctrl_buf[xgm_buf_counter] = 0b11111111;
       xgm_buf_counter++;
     }
@@ -108,32 +108,32 @@ void xgmii_worker_tx(kni_interface_stats *kni_stats, rte_ring *worker_tx_ring) {
       // Check control bit for data
       if ((*xgm_ctrl_buf[i] & (1 << it)) == 0) {
         // Is data, just move over
-        rte_memcpy((uint8_t *)(&xgm_data_buf[i]),
-                   (uint8_t *)xgm_data_buf[pkt_buf_counter] + rte_pkt_index, 1);
+        rte_memcpy((CData *)(xgm_data_buf[i]),
+                   (CData *)(pkts_burst[pkt_buf_counter]) + rte_pkt_index, 1);
         rte_pkt_index += 1;
       } else {
         // Control bit, check which one it is
         if (*(xgm_data_buf[i] + it) == 0xfb) {
           // packet start, switch to next packet buffer
-          if (packet_start_entered)
+          if (packet_start_entered) {
             throw std::logic_error("Multiple packet starts detected");
-          else
+          } else {
             packet_start_entered = true;
-
-          pkt_buf_counter++;
+            pkt_buf_counter++;
+          }
         } else if (*(xgm_data_buf[i] + it) == 0xfd) {
           // end of packet, reset indexing
-          if (!packet_start_entered)
+          if (!packet_start_entered) {
             throw std::logic_error("Multiple end of packet signals detected");
-          else
+          } else {
             packet_start_entered = false;
-
-          rte_pkt_index = 0;
+            rte_pkt_index = 0;
+          }
         } else if (*(xgm_data_buf[i] + it) == 0x07) {
           // Idle bit, just ignore
           continue;
         } else {
-          // Unsupported operation, ignore again
+          // Some other operation, ignore
           continue;
         }
       }
