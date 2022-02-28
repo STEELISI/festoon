@@ -71,11 +71,9 @@ static int kni_change_mtu(uint16_t port_id, unsigned int new_mtu);
 static int kni_config_network_interface(uint16_t port_id, uint8_t if_up);
 static int kni_config_mac_address(uint16_t port_id, uint8_t mac_addr[]);
 
-static uint32_t kni_stop;
-static uint32_t kni_pause;
+static uint32_t kni_stop, kni_pause;
 
-struct rte_ring *worker_tx_ring;
-struct rte_ring *worker_rx_ring;
+static struct rte_ring *worker_tx_ring, *worker_rx_ring;
 
 /* Print out statistics on packets handled */
 static void
@@ -1076,7 +1074,7 @@ main(int argc, char** argv)
   init_kni();
 
   /* Initialize Verilated module and tranlation */
-  init_xgmii_worker(worker_tx_ring, worker_rx_ring);
+  init_xgmii_worker(&worker_tx_ring, &worker_rx_ring);
   init_verilated_top();
 
   /* Initialise each port */

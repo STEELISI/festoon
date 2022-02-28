@@ -47,8 +47,8 @@ void verilator_top_worker() {
 
     if ((main_time % 10) == 0) {
       // Read RTE frame each rising clock
-      rte_ring_dequeue(get_xgmii_rx_queue_ctrl(), (void **)fr_in_ctrl);
-      rte_ring_dequeue(get_xgmii_rx_queue_data(), (void **)fr_in_data);
+      rte_ring_dequeue(get_xgmii_rx_queue_ctrl(), (void **) fr_in_ctrl);
+      rte_ring_dequeue(get_xgmii_rx_queue_data(), (void **) fr_in_data);
 
       // Convert frame into Verilator inputs
       top->eth_in_xgmii_ctrl = *fr_in_ctrl;

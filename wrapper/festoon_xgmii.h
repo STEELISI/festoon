@@ -5,7 +5,7 @@
 #include "verilated.h"
 #include "params.h"
 
-void init_xgmii_worker(rte_ring *worker_tx_ring, rte_ring *worker_rx_ring);
+void init_xgmii_worker(rte_ring **worker_tx_ring, rte_ring **worker_rx_ring);
 
 void stop_xgmii_worker(rte_ring *worker_tx_ring, rte_ring *worker_rx_ring);
 

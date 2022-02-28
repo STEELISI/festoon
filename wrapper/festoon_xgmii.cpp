@@ -9,22 +9,26 @@
 rte_ring *xgmii_tx_queue_ctrl, *xgmii_rx_queue_ctrl, *xgmii_tx_queue_data,
     *xgmii_rx_queue_data;
 
-void init_xgmii_worker(rte_ring *worker_tx_ring, rte_ring *worker_rx_ring) {
+void init_xgmii_worker(rte_ring **worker_tx_ring, rte_ring **worker_rx_ring) {
   // Generate TX and RX queues for pkt_mbufs
-  worker_tx_ring = rte_ring_create("Worker ring output", 1024, rte_socket_id(),
-                                   RING_F_SC_DEQ);
-  worker_rx_ring = rte_ring_create("Worker ring input", 1024, rte_socket_id(),
-                                   RING_F_SC_DEQ);
+  *worker_tx_ring = rte_ring_create("Worker ring output", PKT_BURST_SZ,
+                                   rte_socket_id(), RING_F_SC_DEQ);
+  *worker_rx_ring = rte_ring_create("Worker ring input", PKT_BURST_SZ,
+                                   rte_socket_id(), RING_F_SC_DEQ);
 
   // Generate TX and RX queues for XGMII
-  xgmii_tx_queue_ctrl = rte_ring_create(
-      "XGMII control transmit queue", 1024 * 8, rte_socket_id(), RING_F_SC_DEQ);
-  xgmii_tx_queue_data = rte_ring_create("XGMII data transmit queue", 1024 * 8,
-                                        rte_socket_id(), RING_F_SC_DEQ);
-  xgmii_rx_queue_ctrl = rte_ring_create("XGMII control recieve queue", 1024 * 8,
-                                        rte_socket_id(), RING_F_SC_DEQ);
-  xgmii_rx_queue_data = rte_ring_create("XGMII data recieve queue", 1024 * 8,
-                                        rte_socket_id(), RING_F_SC_DEQ);
+  xgmii_tx_queue_ctrl =
+      rte_ring_create("XGMII control transmit queue", XGMII_BURST_SZ,
+                      rte_socket_id(), RING_F_SC_DEQ);
+  xgmii_tx_queue_data =
+      rte_ring_create("XGMII data transmit queue", XGMII_BURST_SZ,
+                      rte_socket_id(), RING_F_SC_DEQ);
+  xgmii_rx_queue_ctrl =
+      rte_ring_create("XGMII control recieve queue", XGMII_BURST_SZ,
+                      rte_socket_id(), RING_F_SC_DEQ);
+  xgmii_rx_queue_data =
+      rte_ring_create("XGMII data recieve queue", XGMII_BURST_SZ,
+                      rte_socket_id(), RING_F_SC_DEQ);
 }
 
 // Read from RX ring and send to FPGA
