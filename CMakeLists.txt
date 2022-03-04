@@ -18,6 +18,14 @@ add_definitions(${DPDK_CFLAGS})
 include_directories(${VERILATOR_ROOT}/include)
 link_libraries(${DPDK_LIBRARIES})
 
-add_executable(festoon wrapper/main.cpp wrapper/festoon_top.cpp wrapper/festoon_xgmii.cpp)
+add_library(festoon_xgmii STATIC wrapper/festoon_xgmii.cpp)
+set_property(TARGET festoon_xgmii PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+target_link_libraries(festoon_xgmii Threads::Threads ${DPDK_LIBRARIES})
+
+add_library(festoon_top STATIC wrapper/festoon_top.cpp)
+set_property(TARGET festoon_top PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+target_link_libraries(festoon_top festoon_xgmii Vtop)
+
+add_executable(festoon wrapper/main.cpp)
 set_property(TARGET festoon PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-target_link_libraries(festoon Threads::Threads ${DPDK_LIBRARIES} Vtop)
+target_link_libraries(festoon festoon_xgmii festoon_top)

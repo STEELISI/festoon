@@ -37,9 +37,9 @@ void init_verilated_top() {
 
 // Run the Verilator module as a worker thread
 void verilator_top_worker() {
-  CData *fr_in_ctrl, *fr_out_ctrl;
-  QData *fr_in_data, *fr_out_data;
-  int i;
+  CData fr_in_ctrl, fr_out_ctrl;
+  QData fr_in_data, fr_out_data;
+  int i, ret;
 
   // Loop for a clock cycle and deque + queue XGMII frames
   for (i = 0; i < 10; i++) {
@@ -47,24 +47,26 @@ void verilator_top_worker() {
 
     if ((main_time % 10) == 0) {
       // Read RTE frame each rising clock
-      rte_ring_dequeue(get_xgmii_rx_queue_ctrl(), (void **) fr_in_ctrl);
-      rte_ring_dequeue(get_xgmii_rx_queue_data(), (void **) fr_in_data);
+      rte_ring_dequeue(get_xgmii_rx_queue_ctrl(), (void **) &fr_in_ctrl);
+      ret = rte_ring_dequeue(get_xgmii_rx_queue_data(), (void **) &fr_in_data);
 
-      // Convert frame into Verilator inputs
-      top->eth_in_xgmii_ctrl = *fr_in_ctrl;
-      top->eth_in_xgmii_data = *fr_in_data;
+      if (ret == ENOENT) {
+        // Convert frame into Verilator inputs
+        top->eth_in_xgmii_ctrl = fr_in_ctrl;
+        top->eth_in_xgmii_data = fr_in_data;
 
-      // Toggle clock
-      top->clk = 1;
+        // Toggle clock
+        top->clk = 1;
+      }
     }
     if ((main_time % 10) == 5) {
       // Convert Verilator outputs into frame
-      *fr_out_ctrl = top->eth_in_xgmii_ctrl;
-      *fr_out_data = top->eth_in_xgmii_data;
+      fr_out_ctrl = top->eth_in_xgmii_ctrl;
+      fr_out_data = top->eth_in_xgmii_data;
 
       // Transmit RTE frame each rising clock
-      rte_ring_enqueue(get_xgmii_tx_queue_ctrl(), fr_out_ctrl);
-      rte_ring_enqueue(get_xgmii_tx_queue_data(), fr_out_data);
+      rte_ring_enqueue(get_xgmii_tx_queue_ctrl(), (void **) &fr_out_ctrl);
+      rte_ring_enqueue(get_xgmii_tx_queue_data(), (void **) &fr_out_data);
 
       // Toggle clock
       top->clk = 0;

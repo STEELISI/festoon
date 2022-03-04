@@ -286,9 +286,8 @@ main_loop(__rte_unused void *arg)
       eth_ingress(kni_port_params_array[i]);
     }
   } else if (flag == LCORE_MII_TR_TX) {
-    RTE_LOG(INFO, APP, "Lcore %u is writing to port %d\n",
-          kni_port_params_array[i]->lcore_tx,
-          kni_port_params_array[i]->port_id);
+    RTE_LOG(INFO, APP, "Lcore %u is converting XGMII TX\n",
+          kni_port_params_array[i]->lcore_mii_tr_tx);
     while (1) {
       f_stop = __atomic_load_n(&kni_stop, __ATOMIC_RELAXED);
       f_pause = __atomic_load_n(&kni_pause, __ATOMIC_RELAXED);
@@ -299,9 +298,8 @@ main_loop(__rte_unused void *arg)
       xgmii_worker_tx(kni_stats, worker_tx_ring);
     }
   } else if (flag == LCORE_MII_TR_RX) {
-    RTE_LOG(INFO, APP, "Lcore %u is writing to port %d\n",
-          kni_port_params_array[i]->lcore_tx,
-          kni_port_params_array[i]->port_id);
+    RTE_LOG(INFO, APP, "Lcore %u is converting XGMII RX\n",
+          kni_port_params_array[i]->lcore_mii_tr_rx);
     while (1) {
       f_stop = __atomic_load_n(&kni_stop, __ATOMIC_RELAXED);
       f_pause = __atomic_load_n(&kni_pause, __ATOMIC_RELAXED);
@@ -312,9 +310,8 @@ main_loop(__rte_unused void *arg)
       xgmii_worker_rx(kni_stats, worker_rx_ring);
     }
   } else if (flag == LCORE_VTOP) {
-    RTE_LOG(INFO, APP, "Lcore %u is writing to port %d\n",
-          kni_port_params_array[i]->lcore_tx,
-          kni_port_params_array[i]->port_id);
+    RTE_LOG(INFO, APP, "Lcore %u is running Verilator sim\n",
+          kni_port_params_array[i]->lcore_worker_vtop);
     while (1) {
       f_stop = __atomic_load_n(&kni_stop, __ATOMIC_RELAXED);
       f_pause = __atomic_load_n(&kni_pause, __ATOMIC_RELAXED);
@@ -438,6 +435,12 @@ parse_config(const char *arg)
     kni_port_params_array[port_id]->lcore_rx =
           (uint8_t)int_fld[i++];
     kni_port_params_array[port_id]->lcore_tx =
+          (uint8_t)int_fld[i++];
+    kni_port_params_array[port_id]->lcore_mii_tr_rx =
+          (uint8_t)int_fld[i++];
+    kni_port_params_array[port_id]->lcore_mii_tr_tx =
+          (uint8_t)int_fld[i++];
+    kni_port_params_array[port_id]->lcore_worker_vtop =
           (uint8_t)int_fld[i++];
     if (kni_port_params_array[port_id]->lcore_rx >= RTE_MAX_LCORE ||
     kni_port_params_array[port_id]->lcore_tx >= RTE_MAX_LCORE) {
@@ -1070,12 +1073,12 @@ main(int argc, char** argv)
       rte_exit(EXIT_FAILURE, "Configured invalid "
             "port ID %u\n", i);
 
-  /* Initialize KNI subsystem */
-  init_kni();
-
   /* Initialize Verilated module and tranlation */
   init_xgmii_worker(&worker_tx_ring, &worker_rx_ring);
   init_verilated_top();
+
+  /* Initialize KNI subsystem */
+  init_kni();
 
   /* Initialise each port */
   RTE_ETH_FOREACH_DEV(port) {

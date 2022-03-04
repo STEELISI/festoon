@@ -19,7 +19,7 @@
 #define PKT_BURST_SZ 32
 
 /* How many XGMII frames per packet burst */
-#define XGMII_BURST_SZ (PKT_BURST_SZ * (MAX_PACKET_SZ + 2))
+#define XGMII_BURST_SZ 2 * (PKT_BURST_SZ * MAX_PACKET_SZ)
 
 /* How many objects (mbufs) to keep in per-lcore mempool cache */
 #define MEMPOOL_CACHE_SZ PKT_BURST_SZ
