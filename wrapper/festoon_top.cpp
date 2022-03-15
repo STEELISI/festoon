@@ -47,8 +47,8 @@ void verilator_top_worker() {
 
     if ((main_time % 10) == 0) {
       // Read RTE frame each rising clock
-      rte_ring_dequeue(get_xgmii_rx_queue_ctrl(), (void **) &fr_in_ctrl);
-      ret = rte_ring_dequeue(get_xgmii_rx_queue_data(), (void **) &fr_in_data);
+      rte_ring_dequeue(, (void **) &fr_in_ctrl);
+      ret = rte_ring_dequeue(, (void **) &fr_in_data);
 
       if (ret == ENOENT) {
         // Convert frame into Verilator inputs
@@ -65,8 +65,8 @@ void verilator_top_worker() {
       fr_out_data = top->eth_in_xgmii_data;
 
       // Transmit RTE frame each rising clock
-      rte_ring_enqueue(get_xgmii_tx_queue_ctrl(), (void **) &fr_out_ctrl);
-      rte_ring_enqueue(get_xgmii_tx_queue_data(), (void **) &fr_out_data);
+      rte_ring_enqueue(, (void **) &fr_out_ctrl);
+      rte_ring_enqueue(, (void **) &fr_out_data);
 
       // Toggle clock
       top->clk = 0;
