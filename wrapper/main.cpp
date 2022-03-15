@@ -72,11 +72,7 @@ static int kni_config_mac_address(uint16_t port_id, uint8_t mac_addr[]);
 
 static uint32_t kni_stop, kni_pause;
 
-static struct rte_ring *eth_tx_ring, *eth_rx_ring, *kni_tx_ring, *kni_rx_ring,
-                       *eth_xgmii_tx_queue_ctrl, *eth_xgmii_tx_queue_data,
-                       *eth_xgmii_rx_queue_ctrl, *eth_xgmii_rx_queue_data,
-                       *kni_xgmii_rx_queue_ctrl, *kni_xgmii_rx_queue_data,
-                       *kni_xgmii_rx_queue_ctrl, *kni_xgmii_rx_queue_data;
+static struct rte_ring *eth_tx_ring, *eth_rx_ring, *kni_tx_ring, *kni_rx_ring;
 
 /* Print out statistics on packets handled */
 static void print_stats(void) {
@@ -855,31 +851,6 @@ static int kni_alloc(uint16_t port_id) {
                                     rte_socket_id(), RING_F_SC_DEQ);
   *worker_rx_ring = rte_ring_create("Worker ring input", PKT_BURST_SZ,
                                     rte_socket_id(), RING_F_SC_DEQ);
-
-  // Generate TX and RX queues for XGMII
-  xgmii_tx_queue_ctrl =
-      rte_ring_create("XGMII control transmit queue", XGMII_BURST_SZ,
-                      rte_socket_id(), RING_F_SC_DEQ);
-  if (xgmii_tx_queue_ctrl == nullptr)
-    throw std::runtime_error(rte_strerror(rte_errno));
-
-  xgmii_tx_queue_data =
-      rte_ring_create("XGMII data transmit queue", XGMII_BURST_SZ,
-                      rte_socket_id(), RING_F_SC_DEQ);
-  if (xgmii_tx_queue_data == nullptr)
-    throw std::runtime_error(rte_strerror(rte_errno));
-
-  xgmii_rx_queue_ctrl =
-      rte_ring_create("XGMII control recieve queue", XGMII_BURST_SZ,
-                      rte_socket_id(), RING_F_SC_DEQ);
-  if (xgmii_rx_queue_ctrl == nullptr)
-    throw std::runtime_error(rte_strerror(rte_errno));
-
-  xgmii_rx_queue_data =
-      rte_ring_create("XGMII data recieve queue", XGMII_BURST_SZ,
-                      rte_socket_id(), RING_F_SC_DEQ);
-  if (xgmii_rx_queue_data == nullptr)
-    throw std::runtime_error(rte_strerror(rte_errno));
 }
 
 static int kni_free_kni(uint16_t port_id) {
