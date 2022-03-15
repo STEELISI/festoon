@@ -1,8 +1,6 @@
 #ifndef FESTOON_TOP_H
 #define FESTOON_TOP_H
 
-#include <rte_mbuf.h>
-
 // Initialize Verilator model and buffers
 void init_verilated_top();
 

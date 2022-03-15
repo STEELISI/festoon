@@ -5,19 +5,14 @@
 #include "verilated.h"
 #include "params.h"
 
-void init_xgmii_worker(rte_ring **worker_tx_ring, rte_ring **worker_rx_ring);
+void init_xgmii_datatypes();
 
-void stop_xgmii_worker(rte_ring *worker_tx_ring, rte_ring *worker_rx_ring);
+void free_xgmii_datatypes();
 
-void xgmii_worker_rx(kni_interface_stats *kni_stats,
-                     rte_ring *worker_rx_ring);
+void mbuf_to_xgmii(kni_interface_stats *kni_stats, rte_ring *mbuf_rx_ring,
+                   rte_ring *xgmii_tx_ring_ctrl, rte_ring *xgmii_tx_ring_data);
 
-void xgmii_worker_tx(kni_interface_stats *kni_stats,
-                     rte_ring *worker_tx_ring);
-
-rte_ring *get_xgmii_tx_queue_ctrl();
-rte_ring *get_xgmii_rx_queue_ctrl();
-rte_ring *get_xgmii_tx_queue_data();
-rte_ring *get_xgmii_rx_queue_data();
+void xgmii_to_mbuf(kni_interface_stats *kni_stats, rte_ring *xgmii_rx_ring_ctrl,
+                   rte_ring *xgmii_rx_ring_data, rte_ring *mbuf_tx_ring);
 
 #endif
