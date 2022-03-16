@@ -23,42 +23,42 @@ vluint64_t main_time = 0;
 void init_verilated_top() {
   // Generate TX and RX queues for XGMII Ethernet
   eth_tx_ring_ctrl =
-      rte_ring_create("XGMII eth transmit - control", XGMII_BURST_SZ,
+      rte_ring_create("XGMII eth transmit control", XGMII_BURST_SZ,
                       rte_socket_id(), RING_F_SC_DEQ);
   if (eth_tx_ring_ctrl == nullptr) throw runtime_error(rte_strerror(rte_errno));
 
   eth_rx_ring_data =
-      rte_ring_create("XGMII eth transmit - data", XGMII_BURST_SZ,
+      rte_ring_create("XGMII eth transmit data", XGMII_BURST_SZ,
                       rte_socket_id(), RING_F_SC_DEQ);
   if (eth_rx_ring_data == nullptr) throw runtime_error(rte_strerror(rte_errno));
 
   eth_rx_ring_ctrl =
-      rte_ring_create("XGMII eth recieve - control", XGMII_BURST_SZ,
+      rte_ring_create("XGMII eth recieve control", XGMII_BURST_SZ,
                       rte_socket_id(), RING_F_SC_DEQ);
   if (eth_rx_ring_ctrl == nullptr) throw runtime_error(rte_strerror(rte_errno));
 
-  eth_tx_ring_data = rte_ring_create("XGMII eth recieve - data", XGMII_BURST_SZ,
+  eth_tx_ring_data = rte_ring_create("XGMII eth recieve data", XGMII_BURST_SZ,
                                      rte_socket_id(), RING_F_SC_DEQ);
   if (eth_tx_ring_data == nullptr) throw runtime_error(rte_strerror(rte_errno));
 
   // Generate TX and RX queues for XGMII PCIe
   pci_tx_ring_ctrl =
-      rte_ring_create("XGMII pcie transmit - control", XGMII_BURST_SZ,
+      rte_ring_create("XGMII pcie transmit control", XGMII_BURST_SZ,
                       rte_socket_id(), RING_F_SC_DEQ);
   if (pci_tx_ring_ctrl == nullptr) throw runtime_error(rte_strerror(rte_errno));
 
   pci_rx_ring_data =
-      rte_ring_create("XGMII pcie transmit - data", XGMII_BURST_SZ,
+      rte_ring_create("XGMII pcie transmit data", XGMII_BURST_SZ,
                       rte_socket_id(), RING_F_SC_DEQ);
   if (pci_rx_ring_data == nullptr) throw runtime_error(rte_strerror(rte_errno));
 
   pci_rx_ring_ctrl =
-      rte_ring_create("XGMII pcie recieve - control", XGMII_BURST_SZ,
+      rte_ring_create("XGMII pcie recieve control", XGMII_BURST_SZ,
                       rte_socket_id(), RING_F_SC_DEQ);
   if (pci_rx_ring_ctrl == nullptr) throw runtime_error(rte_strerror(rte_errno));
 
   pci_tx_ring_data =
-      rte_ring_create("XGMII pcie recieve - data", XGMII_BURST_SZ,
+      rte_ring_create("XGMII pcie recieve data", XGMII_BURST_SZ,
                       rte_socket_id(), RING_F_SC_DEQ);
   if (pci_tx_ring_data == nullptr) throw runtime_error(rte_strerror(rte_errno));
 

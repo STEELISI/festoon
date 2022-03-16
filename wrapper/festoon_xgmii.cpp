@@ -86,7 +86,6 @@ void xgmii_to_mbuf(kni_interface_stats *kni_stats, bool *pkt_start_entered,
                                       XGMII_BURST_SZ, nullptr);
   if (unlikely(nb_rx_data > XGMII_BURST_SZ) ||
       unlikely(nb_rx_data != nb_rx_ctrl)) {
-    RTE_LOG(ERR, APP, "Error receiving from Verilator\n");
     return;
   }
 
@@ -105,8 +104,7 @@ void xgmii_to_mbuf(kni_interface_stats *kni_stats, bool *pkt_start_entered,
         if (*(xgm_data_buf[i] + it) == 0xfb) {
           // packet start, switch to next packet buffer
           if (pkt_start_entered) {
-            throw std::logic_error(
-                "Multiple packet starts pkt_buf_counterdetected");
+            throw std::logic_error("Multiple packet starts detected");
           } else {
             *pkt_start_entered = true;
             pkt_buf_counter++;
@@ -130,9 +128,13 @@ void xgmii_to_mbuf(kni_interface_stats *kni_stats, bool *pkt_start_entered,
     }
   }
 
+  // No packets sent, skip
+  if (pkt_buf_counter == 0)
+    return;
+
   // Burst tx to ring with replies
   nb_tx = rte_ring_enqueue_burst(mbuf_tx_ring, (void **)pkts_burst,
-                                 PKT_BURST_SZ * MAX_PACKET_SZ / 64, nullptr);
+                                 PKT_BURST_SZ, nullptr);
   if (nb_tx) kni_stats[port_id].tx_packets += nb_tx;
   if (unlikely(nb_tx < nb_rx_data)) {
     // Free mbufs not tx to NIC

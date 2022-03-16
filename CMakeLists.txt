@@ -30,5 +30,5 @@ target_link_libraries(festoon_xgmii festoon_common)
 
 add_executable(festoon wrapper/main.cpp)
 set_property(TARGET festoon PROPERTY INTERPROCEDURAL_OPTIMIZATION true)
-target_link_libraries(festoon festoon_kni festoon_eth festoon_top festoon_xgmii)
+target_link_libraries(festoon festoon_kni festoon_eth festoon_top festoon_xgmii Threads::Threads)
 

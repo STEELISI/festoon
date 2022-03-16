@@ -50,6 +50,8 @@ void eth_egress(kni_port_params *p, rte_ring *worker_tx_ring) {
   nb_kni = p->nb_kni;
   port_id = p->port_id;
   for (i = 0; i < nb_kni; i++) {
+    if (rte_ring_empty(worker_tx_ring)) return;
+
     /* Burst rx from kni */
     num = rte_ring_dequeue_burst(worker_tx_ring, (void **)pkts_burst,
                                  PKT_BURST_SZ, nullptr);
@@ -58,7 +60,7 @@ void eth_egress(kni_port_params *p, rte_ring *worker_tx_ring) {
       return;
     }
     /* Burst tx to eth */
-    nb_tx = rte_eth_tx_burst(port_id, 0, pkts_burst, (uint16_t)num);
+    nb_tx = rte_eth_tx_burst(port_id, 0, pkts_burst, (uint16_t) num);
     // if (nb_tx) kni_stats[port_id].tx_packets += nb_tx;
     if (unlikely(nb_tx < num)) {
       /* Free mbufs not tx to NIC */
