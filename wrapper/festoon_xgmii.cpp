@@ -1,4 +1,4 @@
-#include "festoon_xgmii.h"
+#include <stdexcept>
 
 #include <rte_byteorder.h>
 #include <rte_errno.h>
@@ -6,7 +6,7 @@
 #include <rte_mbuf.h>
 #include <rte_mempool.h>
 
-#include <stdexcept>
+#include "festoon_xgmii.h"
 
 QData *xgm_data_idle, *xgm_data_pkt_begin, *xgm_data_pkt_end;
 CData *xgm_ctrl_idle, *xgm_ctrl_pkt_begin, *xgm_ctrl_pkt_end,
@@ -67,7 +67,7 @@ void mbuf_to_xgmii(kni_interface_stats *kni_stats, rte_ring *mbuf_rx_ring,
   }
 }
 
-void xgmii_to_mbuf(kni_interface_stats *kni_stats, bool pkt_start_entered,
+void xgmii_to_mbuf(kni_interface_stats *kni_stats, bool *pkt_start_entered,
                    rte_ring *xgmii_rx_ring_ctrl, rte_ring *xgmii_rx_ring_data,
                    rte_ring *mbuf_tx_ring) {
   uint8_t i, it;
@@ -95,7 +95,7 @@ void xgmii_to_mbuf(kni_interface_stats *kni_stats, bool pkt_start_entered,
     // Loop through each byte of data
     for (it = 0; it < 8; it++) {
       // Check control bit for data
-      if (pkt_start_entered && (*xgm_ctrl_buf[i] & (1 << it)) == 0) {
+      if (*pkt_start_entered && (*xgm_ctrl_buf[i] & (1 << it)) == 0) {
         // Is data, just move over
         rte_memcpy((CData *)(xgm_data_buf[i]),
                    (CData *)(pkts_burst[pkt_buf_counter]) + rte_pkt_index, 1);
@@ -108,7 +108,7 @@ void xgmii_to_mbuf(kni_interface_stats *kni_stats, bool pkt_start_entered,
             throw std::logic_error(
                 "Multiple packet starts pkt_buf_counterdetected");
           } else {
-            pkt_start_entered = true;
+            *pkt_start_entered = true;
             pkt_buf_counter++;
           }
         } else if (*(xgm_data_buf[i] + it) == 0xfd) {
@@ -116,7 +116,7 @@ void xgmii_to_mbuf(kni_interface_stats *kni_stats, bool pkt_start_entered,
           if (!pkt_start_entered) {
             throw std::logic_error("Multiple end of packet signals detected");
           } else {
-            pkt_start_entered = false;
+            *pkt_start_entered = false;
             rte_pkt_index = 0;
           }
         } else if (*(xgm_data_buf[i] + it) == 0x07) {

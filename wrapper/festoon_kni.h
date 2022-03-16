@@ -3,10 +3,10 @@
 
 #include <rte_ring.h>
 
-#include "params.h"
+#include "festoon_common.h"
 
-static void kni_ingress(struct kni_port_params *p, rte_ring *rx_ring);
+void kni_ingress(kni_port_params *p, rte_ring *rx_ring);
 
-static void kni_egress(struct kni_port_params *p, rte_ring *tx_ring);
+void kni_egress(kni_port_params *p, rte_ring *tx_ring);
 
 #endif

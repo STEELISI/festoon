@@ -1,11 +1,10 @@
 #include <rte_kni.h>
 #include <rte_mbuf.h>
 
-#include "festoon_common.h"
 #include "festoon_kni.h"
 
 // Push mbufs from ring into KNI RX
-static void kni_egress(struct kni_port_params *p, rte_ring *tx_ring)
+void kni_egress(kni_port_params *p, rte_ring *tx_ring)
 {
   uint8_t i;
   uint16_t port_id;
@@ -41,7 +40,7 @@ static void kni_egress(struct kni_port_params *p, rte_ring *tx_ring)
 }
 
 // Push mbufs from KNI TX into ring
-static void kni_ingress(struct kni_port_params *p, rte_ring *rx_ring)
+void kni_ingress(kni_port_params *p, rte_ring *rx_ring)
 {
   uint8_t i;
   uint16_t port_id;

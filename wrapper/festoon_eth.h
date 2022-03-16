@@ -1,10 +1,10 @@
 #ifndef FESTOON_ETH_H
 #define FESTOON_ETH_H
 
-#include "params.h"
+#include "festoon_common.h"
 
-static void kni_ingress(struct kni_port_params *p);
+void eth_ingress(kni_port_params *p, rte_ring *worker_rx_ring);
 
-static void kni_egress(struct kni_port_params *p);
+void eth_egress(kni_port_params *p, rte_ring *worker_tx_ring);
 
 #endif

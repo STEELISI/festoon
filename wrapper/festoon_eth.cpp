@@ -1,13 +1,12 @@
 #include <rte_ethdev.h>
 #include <rte_ring.h>
 
-#include "festoon_common.h"
 #include "festoon_eth.h"
 
 /**
  * Interface to burst rx and enqueue mbufs into rx_q
  */
-static void eth_ingress(struct kni_port_params *p, rte_ring *worker_rx_ring) {
+void eth_ingress(kni_port_params *p, rte_ring *worker_rx_ring) {
   uint8_t i;
   uint16_t port_id;
   unsigned nb_rx, num;
@@ -39,7 +38,7 @@ static void eth_ingress(struct kni_port_params *p, rte_ring *worker_rx_ring) {
 /**
  * Interface to dequeue mbufs from tx_q and burst tx
  */
-static void eth_egress(struct kni_port_params *p, rte_ring *worker_tx_ring) {
+void eth_egress(kni_port_params *p, rte_ring *worker_tx_ring) {
   uint8_t i;
   uint16_t port_id;
   unsigned nb_tx, num;
