@@ -56,9 +56,9 @@ void mbuf_to_xgmii(kni_interface_stats *kni_stats, rte_ring *mbuf_rx_ring,
 
   // Pass DPDK packets to xgmii_rx_queue
   nb_tx_ctrl = rte_ring_enqueue_burst(xgmii_tx_ring_ctrl, (void **)xgm_ctrl_buf,
-                                      XGMII_BURST_SZ, nullptr);
+                                      xgm_buf_counter, nullptr);
   nb_tx_data = rte_ring_enqueue_burst(xgmii_tx_ring_data, (void **)xgm_data_buf,
-                                      XGMII_BURST_SZ, nullptr);
+                                      xgm_buf_counter, nullptr);
 
   if (unlikely(nb_tx_data < xgm_buf_counter) ||
       unlikely(nb_tx_data != nb_tx_ctrl)) {

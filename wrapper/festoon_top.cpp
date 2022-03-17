@@ -106,21 +106,26 @@ void verilator_top_worker() {
       rte_ring_dequeue(pci_rx_ring_ctrl, (void **)&pci_fr_in_ctrl);
       pci_nb_rx = rte_ring_dequeue(pci_rx_ring_data, (void **)&pci_fr_in_data);
 
-      // If both good, update input wires
-      if (eth_nb_rx == ENOENT && pci_nb_rx == ENOENT) {
-        // Convert frame into Verilator inputs
+      if (eth_nb_rx == 0 && pci_nb_rx == 0) {
+        // If both good, update input wires
         top->eth_in_xgmii_ctrl = eth_fr_in_ctrl;
         top->eth_in_xgmii_data = eth_fr_in_data;
         top->pcie_in_xgmii_ctrl = pci_fr_in_ctrl;
         top->pcie_in_xgmii_data = pci_fr_in_data;
+      } else {
+        // Send in a blank frame
+        top->eth_in_xgmii_ctrl = 0b00000000;
+        top->eth_in_xgmii_data = 0x0707070707070707;
+        top->pcie_in_xgmii_ctrl = 0b00000000;
+        top->pcie_in_xgmii_data = 0x0707070707070707;
       }
 
       // Convert Verilator outputs into frame
-      eth_fr_out_ctrl = top->eth_in_xgmii_ctrl;
-      eth_fr_out_data = top->eth_in_xgmii_data;
+      eth_fr_out_ctrl = top->eth_out_xgmii_ctrl;
+      eth_fr_out_data = top->eth_out_xgmii_data;
 
-      pci_fr_out_ctrl = top->pcie_in_xgmii_ctrl;
-      pci_fr_out_data = top->pcie_in_xgmii_data;
+      pci_fr_out_ctrl = top->pcie_out_xgmii_ctrl;
+      pci_fr_out_data = top->pcie_out_xgmii_data;
 
       // Transmit Eth frame each rising clock
       rte_ring_enqueue(eth_tx_ring_ctrl, (void **)&eth_fr_out_ctrl);
