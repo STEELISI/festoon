@@ -8,20 +8,21 @@
 
 #include "festoon_xgmii.h"
 
+using namespace std;
+
 QData *xgm_data_idle, *xgm_data_pkt_begin, *xgm_data_pkt_end;
 CData *xgm_ctrl_idle, *xgm_ctrl_pkt_begin, *xgm_ctrl_pkt_end,
-    *xgm_ctrl_pkt_data;
+      *xgm_ctrl_pkt_data;
 
 // Convert mbuf to xgmii
 void mbuf_to_xgmii(kni_interface_stats *kni_stats, rte_ring *mbuf_rx_ring,
                    rte_ring *xgmii_tx_ring_ctrl, rte_ring *xgmii_tx_ring_data) {
-  uint8_t i, it;
   rte_mbuf *pkts_burst[PKT_BURST_SZ] __rte_cache_aligned;
   CData *xgm_ctrl_buf[XGMII_BURST_SZ] __rte_cache_aligned;
   QData *xgm_data_buf[XGMII_BURST_SZ] __rte_cache_aligned;
-  int32_t f_stop, f_pause;
-  uint16_t port_id;
-  unsigned int nb_tx_ctrl, nb_tx_data, nb_rx, xgm_buf_counter = 0;
+  uint8_t i, data_size;
+  uint16_t it, port_id;
+  uint32_t nb_tx_ctrl, nb_tx_data, nb_rx, xgm_buf_counter = 0;
 
   // Burst RX from ring
   nb_rx = rte_ring_dequeue_burst(mbuf_rx_ring, (void **)pkts_burst,
@@ -36,21 +37,29 @@ void mbuf_to_xgmii(kni_interface_stats *kni_stats, rte_ring *mbuf_rx_ring,
   } else {
     // Create rte_mbuf packets from XGMII packets
     for (i = 0; i < nb_rx; i++) {
+      if (pkts_burst[i] == nullptr)
+        continue;
+
       // Send packet begin control bits
       xgm_data_buf[xgm_buf_counter] = xgm_data_pkt_begin;
       xgm_ctrl_buf[xgm_buf_counter] = xgm_ctrl_pkt_begin;
       xgm_buf_counter++;
 
       // Go through packet and move every 64 bits to XGM data buffer
-      for (it = 0; it < rte_pktmbuf_pkt_len(pkts_burst[i]); it += 64) {
-        xgm_data_buf[xgm_buf_counter] = (QData *)(pkts_burst[i]) + it;
-        xgm_ctrl_buf[xgm_buf_counter] = xgm_ctrl_pkt_data;
+      for (it = 0; it < rte_pktmbuf_pkt_len(pkts_burst[i]); it += sizeof(QData)) {
+        xgm_data_buf[xgm_buf_counter] = rte_pktmbuf_mtod_offset(pkts_burst[i], QData *, it);
+
+        if (it + sizeof(QData) >rte_pktmbuf_pkt_len(pkts_burst[i]))
+          xgm_ctrl_buf[xgm_buf_counter] = &xgm_ctrl_pkt_data[it + sizeof(QData) - rte_pktmbuf_pkt_len(pkts_burst[i])];
+        else
+          xgm_ctrl_buf[xgm_buf_counter] = &xgm_ctrl_pkt_data[8];
         xgm_buf_counter++;
       }
 
       // Packet end control bits
       xgm_data_buf[xgm_buf_counter] = xgm_data_pkt_end;
       xgm_ctrl_buf[xgm_buf_counter] = xgm_ctrl_pkt_end;
+      xgm_buf_counter++;
     }
   }
 
@@ -97,14 +106,16 @@ void xgmii_to_mbuf(kni_interface_stats *kni_stats, bool *pkt_start_entered,
       if (*pkt_start_entered && (*xgm_ctrl_buf[i] & (1 << it)) == 0) {
         // Is data, just move over
         rte_memcpy((CData *)(xgm_data_buf[i]),
-                   (CData *)(pkts_burst[pkt_buf_counter]) + rte_pkt_index, 1);
+                   rte_pktmbuf_mtod_offset(pkts_burst[pkt_buf_counter],
+                                           CData *, rte_pkt_index),
+                   1);
         rte_pkt_index += 1;
       } else {
         // Control bit, check which one it is
         if (*(xgm_data_buf[i] + it) == 0xfb) {
           // packet start, switch to next packet buffer
           if (pkt_start_entered) {
-            throw std::logic_error("Multiple packet starts detected");
+            throw logic_error("Multiple packet starts detected");
           } else {
             *pkt_start_entered = true;
             pkt_buf_counter++;
@@ -112,7 +123,7 @@ void xgmii_to_mbuf(kni_interface_stats *kni_stats, bool *pkt_start_entered,
         } else if (*(xgm_data_buf[i] + it) == 0xfd) {
           // end of packet, reset indexing
           if (!pkt_start_entered) {
-            throw std::logic_error("Multiple end of packet signals detected");
+            throw logic_error("Multiple end of packet signals detected");
           } else {
             *pkt_start_entered = false;
             rte_pkt_index = 0;
@@ -167,9 +178,17 @@ void init_xgmii_datatypes() {
   *xgm_ctrl_pkt_end = 0b00000000;
 
   // Pre-allocate packet data control buffer
-  xgm_ctrl_pkt_data =
-      (CData *)rte_malloc("XGM Pkt Data Ctrl Frame", sizeof(CData), 0);
-  *xgm_ctrl_pkt_data = 0b11111111;
+  xgm_ctrl_pkt_data = (CData *) rte_malloc("XGM Pkt Data Ctrl Frames",
+                                           9 * sizeof(CData), 0);
+  xgm_ctrl_pkt_data[0] = 0b00000000;
+  xgm_ctrl_pkt_data[1] = 0b10000000;
+  xgm_ctrl_pkt_data[2] = 0b11000000;
+  xgm_ctrl_pkt_data[3] = 0b11100000;
+  xgm_ctrl_pkt_data[4] = 0b11110000;
+  xgm_ctrl_pkt_data[5] = 0b11111000;
+  xgm_ctrl_pkt_data[6] = 0b11111100;
+  xgm_ctrl_pkt_data[7] = 0b11111110;
+  xgm_ctrl_pkt_data[8] = 0b11111111;
 }
 
 void free_xgmii_datatypes() {
