@@ -45,7 +45,7 @@
 #include "festoon_xgmii.h"
 #include "params.h"
 
-struct kni_port_params *kni_port_params_array[RTE_MAX_ETHPORTS];
+kni_port_params *kni_port_params_array[RTE_MAX_ETHPORTS];
 
 /* Options for configuring ethernet port */
 struct rte_eth_conf port_conf = {
@@ -56,7 +56,7 @@ struct rte_eth_conf port_conf = {
 };
 
 /* Mempool for mbufs */
-struct rte_mempool *pktmbuf_pool = NULL;
+rte_mempool *pktmbuf_pool = NULL;
 
 /* Mask of enabled ports */
 uint32_t ports_mask = 0;
@@ -66,7 +66,7 @@ int promiscuous_on = 0;
 int monitor_links;
 
 /* kni device statistics array */
-struct kni_interface_stats kni_stats[RTE_MAX_ETHPORTS];
+kni_interface_stats kni_stats[RTE_MAX_ETHPORTS];
 
 int kni_change_mtu(uint16_t port_id, unsigned int new_mtu);
 int kni_config_network_interface(uint16_t port_id, uint8_t if_up);
@@ -76,7 +76,7 @@ uint32_t kni_stop, kni_pause;
 
 bool eth_pkt_start, pci_pkt_start;
 
-struct rte_ring *eth_tx_ring, *eth_rx_ring, *kni_tx_ring, *kni_rx_ring;
+rte_ring *eth_tx_ring, *eth_rx_ring, *kni_tx_ring, *kni_rx_ring;
 
 /* Print out statistics on packets handled */
 void print_stats(void) {
@@ -242,7 +242,7 @@ int main_loop(__rte_unused void *arg) {
       if (f_stop) break;
       if (f_pause) continue;
       xgmii_to_mbuf(kni_stats, &eth_pkt_start, get_vtop_eth_tx_ring_ctrl(),
-                    get_vtop_eth_tx_ring_data(), eth_tx_ring);
+                    get_vtop_eth_tx_ring_data(), eth_tx_ring, pktmbuf_pool);
     }
   } else if (flag == LCORE_ETH_XGMII_RX) {
     RTE_LOG(INFO, APP, "Lcore %u is converting Ethernet XGMII RX\n",
@@ -264,7 +264,7 @@ int main_loop(__rte_unused void *arg) {
       if (f_stop) break;
       if (f_pause) continue;
       xgmii_to_mbuf(kni_stats, &pci_pkt_start, get_vtop_pci_tx_ring_ctrl(),
-                    get_vtop_pci_tx_ring_data(), kni_tx_ring);
+                    get_vtop_pci_tx_ring_data(), kni_tx_ring, pktmbuf_pool);
     }
   } else if (flag == LCORE_KNI_XGMII_RX) {
     RTE_LOG(INFO, APP, "Lcore %u is converting PCIe XGMII RX\n",
