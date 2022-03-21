@@ -22,11 +22,11 @@ target_link_libraries(festoon_kni festoon_common)
 add_library(festoon_eth STATIC wrapper/festoon_eth.cpp)
 target_link_libraries(festoon_eth festoon_common)
 
-add_library(festoon_top STATIC wrapper/festoon_top.cpp)
-target_link_libraries(festoon_top festoon_common Vtop)
-
 add_library(festoon_xgmii STATIC wrapper/festoon_xgmii.cpp)
 target_link_libraries(festoon_xgmii festoon_common)
+
+add_library(festoon_top STATIC wrapper/festoon_top.cpp)
+target_link_libraries(festoon_top festoon_common Vtop)
 
 add_executable(festoon wrapper/main.cpp)
 set_property(TARGET festoon PROPERTY INTERPROCEDURAL_OPTIMIZATION true)
