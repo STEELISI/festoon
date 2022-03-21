@@ -7,6 +7,7 @@
 
 #include <stdexcept>
 
+#include "festoon_common.h"
 #include "Vtop.h"
 #include "params.h"
 
@@ -63,13 +64,13 @@ void init_verilated_top() {
 void verilator_top_worker() {
   rte_mbuf *eth_fr __rte_cache_aligned,
            *pci_fr __rte_cache_aligned;
-  int i, eth_nb_rx, pci_nb_rx;
+  int i, eth_nb_rx, pci_nb_rx, eth_nb_tx, pci_nb_tx;
 
   // Loop for a clock cycle and deque + queue XGMII frames
   for (i = 0; i < 10; i++) {
     if (Verilated::gotFinish()) return;
 
-    if ((main_time % 10) == 0) {
+    if ((main_time % 10) == 1) {
       // Read Eth frame each rising clock
       eth_nb_rx = rte_ring_dequeue(xgm_eth_rx_ring, (void **)&eth_fr);
 
@@ -100,13 +101,23 @@ void verilator_top_worker() {
       // Transmit Eth frame each rising clock
       rte_ring_enqueue(xgm_eth_tx_ring, (void **) eth_fr);
 
+      if (unlikely(eth_nb_tx < 1)) {
+        // Free mbufs not tx to xgm_eth_tx_ring
+        kni_burst_free_mbufs(&eth_fr, 1);
+      }
+
       // Transmit PCI frame each rising clock
       rte_ring_enqueue(xgm_pci_tx_ring, (void **) pci_fr);
+
+      if (unlikely(pci_nb_tx < 1)) {
+        // Free mbufs not tx to xgm_pci_tx_ring
+        kni_burst_free_mbufs(&pci_fr, 1);
+      }
 
       // Toggle clock
       top->clk = 1;
     }
-    if ((main_time % 10) == 5) {
+    if ((main_time % 10) == 6) {
       // Toggle clock
       top->clk = 0;
     }
