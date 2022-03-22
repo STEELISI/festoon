@@ -25,6 +25,7 @@ void eth_ingress(kni_port_params *p, rte_ring *worker_rx_ring) {
       RTE_LOG(ERR, APP, "Error transmitting from eth\n");
       return;
     }
+
     /* Burst tx to worker_rx_ring */
     nb_tx = rte_ring_enqueue_burst(worker_rx_ring, (void **)pkts_burst, nb_rx, NULL);
 

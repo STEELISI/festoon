@@ -17,7 +17,7 @@ void mbuf_to_xgmii(rte_ring *mbuf_rx_ring, rte_ring *xgmii_tx_ring, rte_mempool 
 
   // Burst RX from ring
   nb_rx = rte_ring_dequeue_burst(mbuf_rx_ring, (void **)pkts_burst, PKT_BURST_SZ, nullptr);
-  if (unlikely(nb_rx == 0)) {
+  if (unlikely(nb_rx > PKT_BURST_SZ || nb_rx <= 0)) {
     // Alloc mbufs for packets
     if (rte_pktmbuf_alloc_bulk(tx_mempool, xgm_buf, 1) != 0) {
       RTE_LOG(ERR, APP, "Error allocing xgmii mbufs\n");
@@ -30,8 +30,6 @@ void mbuf_to_xgmii(rte_ring *mbuf_rx_ring, rte_ring *xgmii_tx_ring, rte_mempool 
     xgm_buf_counter++;
   } else {
     // Alloc mbufs for packets
-    rte_pktmbuf_alloc_bulk(tx_mempool, xgm_buf, XGMII_BURST_SZ);
-
     if (rte_pktmbuf_alloc_bulk(tx_mempool, xgm_buf, XGMII_BURST_SZ) != 0) {
       RTE_LOG(ERR, APP, "Error allocing xgmii mbufs\n");
       return;
@@ -39,7 +37,9 @@ void mbuf_to_xgmii(rte_ring *mbuf_rx_ring, rte_ring *xgmii_tx_ring, rte_mempool 
 
     // Create rte_mbuf packets from XGMII packets
     for (i = 0; i < nb_rx; i++) {
-      if (pkts_burst[i] == nullptr)
+      if (unlikely(pkts_burst[i] == nullptr))
+        continue;
+      if (unlikely(rte_pktmbuf_pkt_len(pkts_burst[i]) == 0))
         continue;
 
       frames_per_pkt = (rte_pktmbuf_pkt_len(pkts_burst[i]) - 1) / sizeof(QData) + 1;
@@ -81,7 +81,11 @@ void mbuf_to_xgmii(rte_ring *mbuf_rx_ring, rte_ring *xgmii_tx_ring, rte_mempool 
 
   // if (nb_tx) get_kni_stats()[port_id].tx_packets += nb_tx;
 
-  if (likely(nb_tx < XGMII_BURST_SZ)) {
+  if (unlikely(nb_rx == 0 && nb_tx < xgm_buf_counter)) {
+    // Free mbufs not tx to xgmii_rx_queue
+    kni_burst_free_mbufs(&xgm_buf[nb_tx], xgm_buf_counter - nb_tx);
+    // get_kni_stats()[port_id].rx_dropped += xgm_buf_counter - nb_tx;
+  } else if (likely(nb_rx != 0 && nb_tx < XGMII_BURST_SZ)) {
     // Free mbufs not tx to xgmii_rx_queue
     kni_burst_free_mbufs(&xgm_buf[nb_tx], XGMII_BURST_SZ - nb_tx);
     // get_kni_stats()[port_id].rx_dropped += xgm_buf_counter - nb_tx;
@@ -99,7 +103,7 @@ void xgmii_to_mbuf(bool *pkt_start_entered, rte_ring *xgmii_rx_ring, rte_ring *m
 
   // Burst rx from kni
   nb_rx = rte_ring_dequeue_burst(xgmii_rx_ring, (void **)xgm_buf, XGMII_BURST_SZ, nullptr);
-  if (unlikely(nb_rx > XGMII_BURST_SZ) || unlikely(nb_rx == 0)) {
+  if (unlikely(nb_rx > XGMII_BURST_SZ || nb_rx <= 0)) {
     return;
   }
 
@@ -153,12 +157,9 @@ void xgmii_to_mbuf(bool *pkt_start_entered, rte_ring *xgmii_rx_ring, rte_ring *m
     }
   }
 
-  // No packets sent, skip
-  if (pkt_buf_counter == 0)
-    return;
-
   // Burst tx to ring with replies
-  nb_tx = rte_ring_enqueue_burst(mbuf_tx_ring, (void **)pkts_burst, pkt_buf_counter, nullptr);
+  if (pkt_buf_counter != 0)
+    nb_tx = rte_ring_enqueue_burst(mbuf_tx_ring, (void **)pkts_burst, pkt_buf_counter, nullptr);
 
   // Free input pkts
   kni_burst_free_mbufs(&xgm_buf[0], nb_rx);

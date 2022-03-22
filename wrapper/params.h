@@ -31,10 +31,10 @@
 #define XGMII_MBUF_SZ (64 + 8 + RTE_PKTMBUF_HEADROOM)
 
 /* Number of RX ring descriptors */
-#define NB_RXD 1024
+#define NB_RXD 2048
 
 /* Number of TX ring descriptors */
-#define NB_TXD 1024
+#define NB_TXD 2048
 
 /* Total octets in ethernet header */
 #define KNI_ENET_HEADER_SIZE 14

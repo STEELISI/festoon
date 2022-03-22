@@ -99,10 +99,12 @@ void verilator_top_worker() {
         pci_fr = rte_pktmbuf_alloc(vtop_mempool);
       }
 
+      /*
       cout << "eth_in_xgmii_ctrl: " << hex << top->eth_in_xgmii_ctrl << endl;
       cout << "eth_in_xgmii_data: " << hex << top->eth_in_xgmii_data << endl;
       cout << "pcie_in_xgmii_ctrl: " << hex << top->pcie_in_xgmii_ctrl << endl;
       cout << "pcie_in_xgmii_data: " << hex << top->pcie_in_xgmii_data << endl;
+      */
 
       // Convert Verilator outputs into frame
       *rte_pktmbuf_mtod(eth_fr, CData *) = top->eth_out_xgmii_ctrl;
@@ -111,10 +113,12 @@ void verilator_top_worker() {
       *rte_pktmbuf_mtod(pci_fr, CData *) = top->pcie_out_xgmii_ctrl;
       *rte_pktmbuf_mtod_offset(pci_fr, QData *, sizeof(CData)) = top->pcie_out_xgmii_data;
 
+      /*
       cout << "eth_out_xgmii_ctrl: " << hex << top->eth_out_xgmii_ctrl << endl;
       cout << "eth_out_xgmii_data: " << hex << top->eth_out_xgmii_data << endl;
       cout << "pcie_out_xgmii_ctrl: " << hex << top->pcie_out_xgmii_ctrl << endl;
       cout << "pcie_out_xgmii_data: " << hex << top->pcie_out_xgmii_data << endl << endl;
+      */
 
       // Transmit Eth frame each rising clock
       rte_ring_enqueue(xgm_eth_tx_ring, (void **) eth_fr);
