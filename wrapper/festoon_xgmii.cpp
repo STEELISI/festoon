@@ -8,9 +8,9 @@
 using namespace std;
 
 // Convert mbuf to xgmii
-void mbuf_to_xgmii(kni_interface_stats *kni_stats, rte_ring *mbuf_rx_ring, rte_ring *xgmii_tx_ring, rte_mempool *tx_mempool) {
+void mbuf_to_xgmii(rte_ring *mbuf_rx_ring, rte_ring *xgmii_tx_ring, rte_mempool *tx_mempool) {
   rte_mbuf *pkts_burst[PKT_BURST_SZ] __rte_cache_aligned,
-      *xgm_buf[XGMII_BURST_SZ] __rte_cache_aligned;
+           *xgm_buf[XGMII_BURST_SZ] __rte_cache_aligned;
   uint8_t i, data_size;
   uint16_t it, port_id;
   uint32_t nb_tx, nb_rx, xgm_buf_counter = 0, frames_per_pkt;
@@ -79,24 +79,23 @@ void mbuf_to_xgmii(kni_interface_stats *kni_stats, rte_ring *mbuf_rx_ring, rte_r
   // Free input pkts
   kni_burst_free_mbufs(&pkts_burst[0], nb_rx);
 
-  if (nb_tx) kni_stats[port_id].tx_packets += nb_tx;
-  if (unlikely(nb_tx < xgm_buf_counter)) {
+  // if (nb_tx) get_kni_stats()[port_id].tx_packets += nb_tx;
+
+  if (likely(nb_tx < XGMII_BURST_SZ)) {
     // Free mbufs not tx to xgmii_rx_queue
-    kni_burst_free_mbufs(&xgm_buf[nb_tx], xgm_buf_counter - nb_tx);
-    kni_stats[port_id].rx_dropped += xgm_buf_counter - nb_tx;
+    kni_burst_free_mbufs(&xgm_buf[nb_tx], XGMII_BURST_SZ - nb_tx);
+    // get_kni_stats()[port_id].rx_dropped += xgm_buf_counter - nb_tx;
   }
 }
 
-void xgmii_to_mbuf(kni_interface_stats *kni_stats, bool *pkt_start_entered,
-                   rte_ring *xgmii_rx_ring, rte_ring *mbuf_tx_ring,
-                   rte_mempool *tx_mempool) {
+void xgmii_to_mbuf(bool *pkt_start_entered, rte_ring *xgmii_rx_ring, rte_ring *mbuf_tx_ring, rte_mempool *tx_mempool) {
   uint8_t i, it;
   uint16_t port_id;
   unsigned int nb_tx, nb_rx, pkt_buf_counter = 0, rte_pkt_index = 0;
   uint32_t nb_kni;
   CData *ctrl_buf;
   rte_mbuf *pkts_burst[PKT_BURST_SZ] __rte_cache_aligned,
-      *xgm_buf[XGMII_BURST_SZ] __rte_cache_aligned;
+           *xgm_buf[XGMII_BURST_SZ] __rte_cache_aligned;
 
   // Burst rx from kni
   nb_rx = rte_ring_dequeue_burst(xgmii_rx_ring, (void **)xgm_buf, XGMII_BURST_SZ, nullptr);
@@ -159,15 +158,16 @@ void xgmii_to_mbuf(kni_interface_stats *kni_stats, bool *pkt_start_entered,
     return;
 
   // Burst tx to ring with replies
-  nb_tx = rte_ring_enqueue_burst(mbuf_tx_ring, (void **)pkts_burst, PKT_BURST_SZ, nullptr);
+  nb_tx = rte_ring_enqueue_burst(mbuf_tx_ring, (void **)pkts_burst, pkt_buf_counter, nullptr);
 
   // Free input pkts
   kni_burst_free_mbufs(&xgm_buf[0], nb_rx);
 
-  if (nb_tx) kni_stats[port_id].tx_packets += nb_tx;
-  if (unlikely(nb_tx < nb_rx)) {
+  // if (nb_tx) get_kni_stats()[port_id].tx_packets += nb_tx;
+
+  if (likely(nb_tx < PKT_BURST_SZ)) {
     // Free mbufs not tx to NIC
-    kni_burst_free_mbufs(&pkts_burst[nb_tx], nb_rx - nb_tx);
-    kni_stats[port_id].tx_dropped += nb_rx - nb_tx;
+    kni_burst_free_mbufs(&pkts_burst[nb_tx], PKT_BURST_SZ - nb_tx);
+    // get_kni_stats()[port_id].tx_dropped += pkt_buf_counter - nb_tx;
   }
 }

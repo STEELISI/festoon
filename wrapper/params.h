@@ -13,7 +13,7 @@
 #define MBUF_DATA_SZ (MAX_PACKET_SZ + RTE_PKTMBUF_HEADROOM)
 
 /* Number of mbufs in pktmbuf mempool */
-#define NB_MBUF (8192 * 64)
+#define NB_MBUF (8192 * 128)
 
 /* How many packets to attempt to read from NIC in one go */
 #define PKT_BURST_SZ 32

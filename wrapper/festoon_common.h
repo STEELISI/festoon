@@ -27,17 +27,16 @@ struct kni_port_params {
 
 // Structure type for recording kni interface specific stats
 struct kni_interface_stats {
-  // number of pkts received from NIC, and sent to KNI
-  uint64_t rx_packets;
-
-  // number of pkts received from NIC, but failed to send to KNI
-  uint64_t rx_dropped;
-
-  // number of pkts received from KNI, and sent to NIC
-  uint64_t tx_packets;
-
-  // number of pkts received from KNI, but failed to send to NIC
-  uint64_t tx_dropped;
+  uint64_t eth_rx_packets; // number of pkts received from NIC, and sent to XGMII
+  uint64_t eth_rx_dropped; // number of pkts received from NIC, but failed to send to XGMII
+  uint64_t eth_tx_packets; // number of pkts received from XGMII, and sent to NIC
+  uint64_t eth_tx_dropped; // number of pkts received from XGMII, but failed to send to NIC
+  uint64_t kni_rx_packets; // number of pkts received from KNI, and sent to XGMII
+  uint64_t kni_rx_dropped; // number of pkts received from KNI, but failed to send to XGMII
+  uint64_t kni_tx_packets; // number of pkts received from XGMII, and sent to KNI
+  uint64_t kni_tx_dropped; // number of pkts received from XGMII, but failed to send to KNI
 };
+
+kni_interface_stats *get_kni_stats();
 
 #endif

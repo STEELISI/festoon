@@ -1,6 +1,7 @@
 #include <rte_kni.h>
 #include <rte_mbuf.h>
 
+#include "festoon_common.h"
 #include "festoon_kni.h"
 
 // Push mbufs from ring into KNI RX
@@ -29,13 +30,13 @@ void kni_egress(kni_port_params *p, rte_ring *tx_ring)
 
     // Burst rx to kni
     num = rte_kni_tx_burst(p->kni[i], pkts_burst, nb_rx);
-    // if (num) kni_stats[port_id].rx_packets += num;
+    if (num) get_kni_stats()[port_id].kni_rx_packets += num;
 
     rte_kni_handle_request(p->kni[i]);
     if (unlikely(num < nb_rx)) {
       // Free mbufs not tx to kni interface
       kni_burst_free_mbufs(&pkts_burst[num], nb_rx - num);
-      // kni_stats[port_id].rx_dropped += nb_rx - num;
+      get_kni_stats()[port_id].kni_rx_dropped += nb_rx - num;
     }
   }
 }
@@ -64,12 +65,12 @@ void kni_ingress(kni_port_params *p, rte_ring *rx_ring)
 
     // Burst tx to ring
     nb_tx = rte_ring_enqueue_burst(rx_ring, (void **)pkts_burst, num, NULL);
-    // if (nb_tx) kni_stats[port_id].tx_packets += nb_tx;
+    if (nb_tx) get_kni_stats()[port_id].kni_tx_packets += nb_tx;
 
     if (unlikely(nb_tx < num)) {
       // Free mbufs not tx to NIC
       kni_burst_free_mbufs(&pkts_burst[nb_tx], num - nb_tx);
-      // kni_stats[port_id].tx_dropped += num - nb_tx;
+      get_kni_stats()[port_id].kni_tx_dropped += num - nb_tx;
     }
   }
 }

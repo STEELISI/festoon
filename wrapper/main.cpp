@@ -65,9 +65,6 @@ int promiscuous_on = 0;
 /* Monitor link status continually. off by default. */
 int monitor_links;
 
-/* kni device statistics array */
-kni_interface_stats kni_stats[RTE_MAX_ETHPORTS];
-
 int kni_change_mtu(uint16_t port_id, unsigned int new_mtu);
 int kni_config_network_interface(uint16_t port_id, uint8_t if_up);
 int kni_config_mac_address(uint16_t port_id, uint8_t mac_addr[]);
@@ -82,13 +79,10 @@ rte_ring *eth_tx_ring, *eth_rx_ring, *kni_tx_ring, *kni_rx_ring;
 void print_stats(void) {
   uint16_t i;
 
-  printf("\n**KNI example application statistics**\n"
-         "======  ==============  ============  ============  ============  "
-         "============\n"
-         " Port    Lcore(RX/TX)    rx_packets    rx_dropped    tx_packets    "
-         "tx_dropped\n"
-         "------  --------------  ------------  ------------  ------------  "
-         "------------\n");
+  printf("\n**ETH statistics**\n"
+         "======  ==============  ============  ============  ============  ============\n"
+         " Port    Lcore(RX/TX)    rx_packets    rx_dropped    tx_packets    tx_dropped\n"
+         "------  --------------  ------------  ------------  ------------  ------------\n");
   for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
     if (!kni_port_params_array[i])
       continue;
@@ -96,9 +90,28 @@ void print_stats(void) {
     printf("%7d %10u/%2u %13" PRIu64 " %13" PRIu64 " %13" PRIu64 " "
            "%13" PRIu64 "\n ",
            i, kni_port_params_array[i]->lcore_eth_rx,
-           kni_port_params_array[i]->lcore_eth_tx, kni_stats[i].rx_packets,
-           kni_stats[i].rx_dropped, kni_stats[i].tx_packets,
-           kni_stats[i].tx_dropped);
+           kni_port_params_array[i]->lcore_eth_tx, get_kni_stats()[i].eth_rx_packets,
+           get_kni_stats()[i].eth_rx_dropped, get_kni_stats()[i].eth_tx_packets,
+           get_kni_stats()[i].eth_tx_dropped);
+  }
+  printf("======  ==============  ============  ============  ============  "
+         "============\n");
+
+
+  printf("\n**KNI statistics**\n"
+         "======  ==============  ============  ============  ============  ============\n"
+         " Port    Lcore(RX/TX)    rx_packets    rx_dropped    tx_packets    tx_dropped\n"
+         "------  --------------  ------------  ------------  ------------  ------------\n");
+  for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
+    if (!kni_port_params_array[i])
+      continue;
+
+    printf("%7d %10u/%2u %13" PRIu64 " %13" PRIu64 " %13" PRIu64 " "
+           "%13" PRIu64 "\n ",
+           i, kni_port_params_array[i]->lcore_kni_rx,
+           kni_port_params_array[i]->lcore_kni_tx, get_kni_stats()[i].kni_rx_packets,
+           get_kni_stats()[i].kni_rx_dropped, get_kni_stats()[i].kni_tx_packets,
+           get_kni_stats()[i].kni_tx_dropped);
   }
   printf("======  ==============  ============  ============  ============  "
          "============\n");
@@ -115,7 +128,7 @@ void signal_handler(int signum) {
 
   /* When we receive a USR2 signal, reset stats */
   if (signum == SIGUSR2) {
-    memset(&kni_stats, 0, sizeof(kni_stats));
+    memset(get_kni_stats(), 0, sizeof(*get_kni_stats()));
     printf("\n** Statistics have been reset **\n");
     return;
   }
@@ -249,8 +262,7 @@ int main_loop(__rte_unused void *arg) {
         break;
       if (f_pause)
         continue;
-      xgmii_to_mbuf(kni_stats, &eth_pkt_start, get_vtop_eth_tx_ring(),
-                    eth_tx_ring, pktmbuf_pool);
+      xgmii_to_mbuf(&eth_pkt_start, get_vtop_eth_tx_ring(), eth_tx_ring, pktmbuf_pool);
     }
   } else if (flag == LCORE_ETH_XGMII_RX) {
     RTE_LOG(INFO, APP, "Lcore %u is converting Ethernet XGMII RX\n",
@@ -262,8 +274,7 @@ int main_loop(__rte_unused void *arg) {
         break;
       if (f_pause)
         continue;
-      mbuf_to_xgmii(kni_stats, eth_rx_ring, get_vtop_eth_rx_ring(),
-                    xgmii_pool);
+      mbuf_to_xgmii(eth_rx_ring, get_vtop_eth_rx_ring(), xgmii_pool);
     }
   } else if (flag == LCORE_KNI_XGMII_TX) {
     RTE_LOG(INFO, APP, "Lcore %u is converting PCIe XGMII TX\n",
@@ -275,8 +286,7 @@ int main_loop(__rte_unused void *arg) {
         break;
       if (f_pause)
         continue;
-      xgmii_to_mbuf(kni_stats, &pci_pkt_start, get_vtop_pci_tx_ring(),
-                    kni_tx_ring, pktmbuf_pool);
+      xgmii_to_mbuf(&pci_pkt_start, get_vtop_pci_tx_ring(), kni_tx_ring, pktmbuf_pool);
     }
   } else if (flag == LCORE_KNI_XGMII_RX) {
     RTE_LOG(INFO, APP, "Lcore %u is converting PCIe XGMII RX\n",
@@ -288,8 +298,7 @@ int main_loop(__rte_unused void *arg) {
         break;
       if (f_pause)
         continue;
-      mbuf_to_xgmii(kni_stats, kni_rx_ring, get_vtop_pci_rx_ring(),
-                    xgmii_pool);
+      mbuf_to_xgmii(kni_rx_ring, get_vtop_pci_rx_ring(), xgmii_pool);
     }
   } else if (flag == LCORE_VTOP) {
     RTE_LOG(INFO, APP, "Lcore %u is running Verilator sim\n",

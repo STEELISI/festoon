@@ -1,6 +1,7 @@
 #include <rte_ethdev.h>
 #include <rte_ring.h>
 
+#include "festoon_common.h"
 #include "festoon_eth.h"
 
 /**
@@ -9,7 +10,7 @@
 void eth_ingress(kni_port_params *p, rte_ring *worker_rx_ring) {
   uint8_t i;
   uint16_t port_id;
-  unsigned nb_rx, num;
+  unsigned nb_rx, nb_tx;
   uint32_t nb_kni;
   struct rte_mbuf *pkts_burst[PKT_BURST_SZ];
 
@@ -25,11 +26,14 @@ void eth_ingress(kni_port_params *p, rte_ring *worker_rx_ring) {
       return;
     }
     /* Burst tx to worker_rx_ring */
-    num = rte_ring_enqueue_burst(worker_rx_ring, (void **)pkts_burst, nb_rx, NULL);
-    if (unlikely(num < nb_rx)) {
+    nb_tx = rte_ring_enqueue_burst(worker_rx_ring, (void **)pkts_burst, nb_rx, NULL);
+
+    if (nb_tx) get_kni_stats()[port_id].eth_rx_packets += nb_tx;
+
+    if (unlikely(nb_tx < nb_rx)) {
       /* Free mbufs not tx to kni interface */
-      kni_burst_free_mbufs(&pkts_burst[num], nb_rx - num);
-      // kni_stats[port_id].rx_dropped += nb_rx - num;
+      kni_burst_free_mbufs(&pkts_burst[nb_tx], nb_rx - nb_tx);
+      get_kni_stats()[port_id].eth_rx_dropped += nb_rx - nb_tx;
     }
   }
 }
@@ -40,7 +44,7 @@ void eth_ingress(kni_port_params *p, rte_ring *worker_rx_ring) {
 void eth_egress(kni_port_params *p, rte_ring *worker_tx_ring) {
   uint8_t i;
   uint16_t port_id;
-  unsigned nb_tx, num;
+  unsigned nb_tx, nb_rx;
   uint32_t nb_kni;
   struct rte_mbuf *pkts_burst[PKT_BURST_SZ];
 
@@ -52,18 +56,21 @@ void eth_egress(kni_port_params *p, rte_ring *worker_tx_ring) {
     if (rte_ring_empty(worker_tx_ring)) return;
 
     /* Burst rx from kni */
-    num = rte_ring_dequeue_burst(worker_tx_ring, (void **)pkts_burst, PKT_BURST_SZ, nullptr);
-    if (unlikely(num > PKT_BURST_SZ)) {
+    nb_rx = rte_ring_dequeue_burst(worker_tx_ring, (void **)pkts_burst, PKT_BURST_SZ, nullptr);
+    if (unlikely(nb_rx > PKT_BURST_SZ)) {
       RTE_LOG(ERR, APP, "Error receiving from eth\n");
       return;
     }
+
     /* Burst tx to eth */
-    nb_tx = rte_eth_tx_burst(port_id, 0, pkts_burst, (uint16_t) num);
-    // if (nb_tx) kni_stats[port_id].tx_packets += nb_tx;
-    if (unlikely(nb_tx < num)) {
+    nb_tx = rte_eth_tx_burst(port_id, 0, pkts_burst, (uint16_t) nb_rx);
+
+    if (nb_tx) get_kni_stats()[port_id].eth_tx_packets += nb_tx;
+
+    if (unlikely(nb_tx < nb_rx)) {
       /* Free mbufs not tx to NIC */
-      kni_burst_free_mbufs(&pkts_burst[nb_tx], num - nb_tx);
-      // kni_stats[port_id].tx_dropped += num - nb_tx;
+      kni_burst_free_mbufs(&pkts_burst[nb_tx], nb_rx - nb_tx);
+      get_kni_stats()[port_id].eth_tx_dropped += nb_rx - nb_tx;
     }
   }
 }
