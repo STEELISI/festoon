@@ -56,7 +56,7 @@ struct rte_eth_conf port_conf = {
 };
 
 /* Mempool for mbufs */
-rte_mempool *pktmbuf_pool = NULL;
+rte_mempool *pktmbuf_pool = NULL, *xgmii_pool = NULL;
 
 /* Mask of enabled ports */
 uint32_t ports_mask = 0;
@@ -263,7 +263,7 @@ int main_loop(__rte_unused void *arg) {
       if (f_pause)
         continue;
       mbuf_to_xgmii(kni_stats, eth_rx_ring, get_vtop_eth_rx_ring(),
-                    pktmbuf_pool);
+                    xgmii_pool);
     }
   } else if (flag == LCORE_KNI_XGMII_TX) {
     RTE_LOG(INFO, APP, "Lcore %u is converting PCIe XGMII TX\n",
@@ -289,7 +289,7 @@ int main_loop(__rte_unused void *arg) {
       if (f_pause)
         continue;
       mbuf_to_xgmii(kni_stats, kni_rx_ring, get_vtop_pci_rx_ring(),
-                    pktmbuf_pool);
+                    xgmii_pool);
     }
   } else if (flag == LCORE_VTOP) {
     RTE_LOG(INFO, APP, "Lcore %u is running Verilator sim\n",
@@ -1015,9 +1015,15 @@ int main(int argc, char **argv) {
     rte_exit(EXIT_FAILURE, "Could not parse input parameters\n");
 
   /* Create the mbuf pool */
-  pktmbuf_pool = rte_pktmbuf_pool_create("mbuf_pool", NB_MBUF, MEMPOOL_CACHE_SZ,
-                                         0, MBUF_DATA_SZ, rte_socket_id());
+  pktmbuf_pool = rte_pktmbuf_pool_create("mbuf_pool", NB_MBUF, MEMPOOL_CACHE_SZ, 0, MBUF_DATA_SZ, rte_socket_id());
   if (pktmbuf_pool == NULL) {
+    rte_exit(EXIT_FAILURE, "Could not initialise mbuf pool\n");
+    return -1;
+  }
+
+  /* Create the mii frame pool */
+  xgmii_pool = rte_pktmbuf_pool_create("mii_pool", XGMII_NB_MBUF, MEMPOOL_CACHE_SZ, 0, XGMII_MBUF_SZ, rte_socket_id());
+  if (xgmii_pool == NULL) {
     rte_exit(EXIT_FAILURE, "Could not initialise mbuf pool\n");
     return -1;
   }
@@ -1037,7 +1043,7 @@ int main(int argc, char **argv) {
 
   /* Initialize Verilated module and tranlation */
   init_worker_buffers();
-  init_verilated_top();
+  init_verilated_top(pktmbuf_pool);
 
   /* Initialize KNI subsystem */
   init_kni();

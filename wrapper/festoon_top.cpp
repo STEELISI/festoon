@@ -16,11 +16,12 @@ using namespace std;
 Vtop *top;
 
 rte_ring *xgm_eth_rx_ring, *xgm_eth_tx_ring, *xgm_pci_rx_ring, *xgm_pci_tx_ring;
+rte_mempool *vtop_mempool;
 
 // Simulation time
 vluint64_t main_time = 0;
 
-void init_verilated_top() {
+void init_verilated_top(rte_mempool *mp) {
   // Generate TX and RX queues for XGMII Ethernet
   xgm_eth_rx_ring = rte_ring_create("XGMII eth tx", XGMII_BURST_SZ, rte_socket_id(), RING_F_SC_DEQ);
   if (xgm_eth_rx_ring == nullptr) throw runtime_error(rte_strerror(rte_errno));
@@ -34,6 +35,8 @@ void init_verilated_top() {
 
   xgm_pci_rx_ring = rte_ring_create("XGMII pcie rx", XGMII_BURST_SZ, rte_socket_id(), RING_F_SC_DEQ);
   if (xgm_pci_rx_ring == nullptr) throw runtime_error(rte_strerror(rte_errno));
+
+  vtop_mempool = mp;
 
   // Start Verilator model
   top = new Vtop;
@@ -77,7 +80,7 @@ void verilator_top_worker() {
       // Read PCI frame each rising clock
       pci_nb_rx = rte_ring_dequeue(xgm_pci_rx_ring, (void **)&pci_fr);
 
-      if (eth_nb_rx == 0 && pci_nb_rx == 0) {
+      if (unlikely(eth_fr != nullptr && pci_fr != nullptr)) {
         // If both good, update input wires
         top->eth_in_xgmii_ctrl = *rte_pktmbuf_mtod(eth_fr, CData *);
         top->eth_in_xgmii_data = *rte_pktmbuf_mtod_offset(eth_fr, QData *, sizeof(CData));
@@ -89,6 +92,10 @@ void verilator_top_worker() {
         top->eth_in_xgmii_data = 0x0707070707070707;
         top->pcie_in_xgmii_ctrl = 0b00000000;
         top->pcie_in_xgmii_data = 0x0707070707070707;
+
+        // Alloc new rte_mbufs
+        eth_fr = rte_pktmbuf_alloc(vtop_mempool);
+        pci_fr = rte_pktmbuf_alloc(vtop_mempool);
       }
 
       // Convert Verilator outputs into frame

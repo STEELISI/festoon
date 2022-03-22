@@ -21,12 +21,11 @@ void eth_ingress(kni_port_params *p, rte_ring *worker_rx_ring) {
     /* Burst rx from eth */
     nb_rx = rte_eth_rx_burst(port_id, 0, pkts_burst, PKT_BURST_SZ);
     if (unlikely(nb_rx > PKT_BURST_SZ)) {
-      RTE_LOG(ERR, APP, "Error receiving from eth\n");
+      RTE_LOG(ERR, APP, "Error transmitting from eth\n");
       return;
     }
     /* Burst tx to worker_rx_ring */
-    num = rte_ring_enqueue_burst(worker_rx_ring, (void **)pkts_burst, nb_rx,
-                                 NULL);
+    num = rte_ring_enqueue_burst(worker_rx_ring, (void **)pkts_burst, nb_rx, NULL);
     if (unlikely(num < nb_rx)) {
       /* Free mbufs not tx to kni interface */
       kni_burst_free_mbufs(&pkts_burst[num], nb_rx - num);
@@ -53,10 +52,9 @@ void eth_egress(kni_port_params *p, rte_ring *worker_tx_ring) {
     if (rte_ring_empty(worker_tx_ring)) return;
 
     /* Burst rx from kni */
-    num = rte_ring_dequeue_burst(worker_tx_ring, (void **)pkts_burst,
-                                 PKT_BURST_SZ, nullptr);
+    num = rte_ring_dequeue_burst(worker_tx_ring, (void **)pkts_burst, PKT_BURST_SZ, nullptr);
     if (unlikely(num > PKT_BURST_SZ)) {
-      RTE_LOG(ERR, APP, "Error receiving from KNI\n");
+      RTE_LOG(ERR, APP, "Error receiving from eth\n");
       return;
     }
     /* Burst tx to eth */

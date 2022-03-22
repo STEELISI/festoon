@@ -2,9 +2,10 @@
 #define FESTOON_TOP_H
 
 #include <rte_ring.h>
+#include <rte_mempool.h>
 
 // Initialize Verilator model and buffers
-void init_verilated_top();
+void init_verilated_top(rte_mempool *mp);
 
 // Free Verilator model and buffers
 void stop_verilated_top();

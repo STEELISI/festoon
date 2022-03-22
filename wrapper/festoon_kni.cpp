@@ -21,10 +21,9 @@ void kni_egress(kni_port_params *p, rte_ring *tx_ring)
     if (rte_ring_empty(tx_ring)) return;
 
     // Burst rx from tx_ring
-    nb_rx = rte_ring_dequeue_burst(tx_ring, (void **)pkts_burst,
-                                 PKT_BURST_SZ, nullptr);
+    nb_rx = rte_ring_dequeue_burst(tx_ring, (void **)pkts_burst, PKT_BURST_SZ, nullptr);
     if (unlikely(nb_rx > PKT_BURST_SZ)) {
-      RTE_LOG(ERR, APP, "Error receiving from eth\n");
+      RTE_LOG(ERR, APP, "Error transmitting from KNI\n");
       return;
     }
 
@@ -64,8 +63,7 @@ void kni_ingress(kni_port_params *p, rte_ring *rx_ring)
     }
 
     // Burst tx to ring
-    nb_tx = rte_ring_enqueue_burst(rx_ring, (void **)pkts_burst, num,
-                                   NULL);
+    nb_tx = rte_ring_enqueue_burst(rx_ring, (void **)pkts_burst, num, NULL);
     // if (nb_tx) kni_stats[port_id].tx_packets += nb_tx;
 
     if (unlikely(nb_tx < num)) {
