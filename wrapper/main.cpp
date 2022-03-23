@@ -828,20 +828,18 @@ int kni_config_network_interface(uint16_t port_id, uint8_t if_up) {
 
   __atomic_fetch_add(&kni_pause, 1, __ATOMIC_RELAXED);
 
-  if (if_up != 0) { /* Configure network interface up */
+  if (if_up != 0) { // Configure network interface up
     ret = rte_eth_dev_stop(port_id);
     if (ret != 0) {
-      RTE_LOG(ERR, APP, "Failed to stop port %d: %s\n", port_id,
-              rte_strerror(-ret));
+      RTE_LOG(ERR, APP, "Failed to stop port %d: %s\n", port_id, rte_strerror(-ret));
       __atomic_fetch_sub(&kni_pause, 1, __ATOMIC_RELAXED);
       return ret;
     }
     ret = rte_eth_dev_start(port_id);
-  } else { /* Configure network interface down */
+  } else { // Configure network interface down
     ret = rte_eth_dev_stop(port_id);
     if (ret != 0) {
-      RTE_LOG(ERR, APP, "Failed to stop port %d: %s\n", port_id,
-              rte_strerror(-ret));
+      RTE_LOG(ERR, APP, "Failed to stop port %d: %s\n", port_id, rte_strerror(-ret));
       __atomic_fetch_sub(&kni_pause, 1, __ATOMIC_RELAXED);
       return ret;
     }

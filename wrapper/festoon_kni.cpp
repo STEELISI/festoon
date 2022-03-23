@@ -19,8 +19,6 @@ void kni_egress(kni_port_params *p, rte_ring *tx_ring)
   nb_kni = p->nb_kni;
   port_id = p->port_id;
   for (i = 0; i < nb_kni; i++) {
-    if (rte_ring_empty(tx_ring)) return;
-
     // Burst rx from tx_ring
     nb_rx = rte_ring_dequeue_burst(tx_ring, (void **)pkts_burst, PKT_BURST_SZ, nullptr);
     if (unlikely(nb_rx > PKT_BURST_SZ)) {
