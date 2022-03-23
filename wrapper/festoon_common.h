@@ -35,6 +35,10 @@ struct kni_interface_stats {
   uint64_t kni_rx_dropped; // number of pkts received from KNI, but failed to send to XGMII
   uint64_t kni_tx_packets; // number of pkts received from XGMII, and sent to KNI
   uint64_t kni_tx_dropped; // number of pkts received from XGMII, but failed to send to KNI
+  uint64_t xgmii_rx_packets[2]; // number of pkts received from DPDK, and sent to FPGA
+  uint64_t xgmii_rx_dropped[2]; // number of pkts received from DPDK, but failed to send to FPGA
+  uint64_t xgmii_tx_packets[2]; // number of pkts received from FPGA, and sent to DPDK
+  uint64_t xgmii_tx_dropped[2]; // number of pkts received from FPGA, but failed to send to DPDK
 };
 
 kni_interface_stats *get_kni_stats();

@@ -97,7 +97,6 @@ void print_stats(void) {
   printf("======  ==============  ============  ============  ============  "
          "============\n");
 
-
   printf("\n**KNI statistics**\n"
          "======  ==============  ============  ============  ============  ============\n"
          " Port    Lcore(RX/TX)    rx_packets    rx_dropped    tx_packets    tx_dropped\n"
@@ -112,6 +111,42 @@ void print_stats(void) {
            kni_port_params_array[i]->lcore_kni_tx, get_kni_stats()[i].kni_rx_packets,
            get_kni_stats()[i].kni_rx_dropped, get_kni_stats()[i].kni_tx_packets,
            get_kni_stats()[i].kni_tx_dropped);
+  }
+  printf("======  ==============  ============  ============  ============  "
+         "============\n");
+
+  printf("\n**Eth XGMII statistics**\n"
+         "======  ==============  ============  ============  ============  ============\n"
+         " Port    Lcore(RX/TX)    rx_packets    rx_dropped    tx_packets    tx_dropped\n"
+         "------  --------------  ------------  ------------  ------------  ------------\n");
+  for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
+    if (!kni_port_params_array[i])
+      continue;
+
+    printf("%7d %10u/%2u %13" PRIu64 " %13" PRIu64 " %13" PRIu64 " "
+           "%13" PRIu64 "\n ",
+           i, kni_port_params_array[i]->lcore_eth_mii_rx,
+           kni_port_params_array[i]->lcore_eth_mii_tx, get_kni_stats()[i].xgmii_rx_packets[0],
+           get_kni_stats()[i].xgmii_rx_dropped[0], get_kni_stats()[i].xgmii_tx_packets[0],
+           get_kni_stats()[i].xgmii_tx_dropped[0]);
+  }
+  printf("======  ==============  ============  ============  ============  "
+         "============\n");
+
+  printf("\n**PCIe XGMII statistics**\n"
+         "======  ==============  ============  ============  ============  ============\n"
+         " Port    Lcore(RX/TX)    rx_packets    rx_dropped    tx_packets    tx_dropped\n"
+         "------  --------------  ------------  ------------  ------------  ------------\n");
+  for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
+    if (!kni_port_params_array[i])
+      continue;
+
+    printf("%7d %10u/%2u %13" PRIu64 " %13" PRIu64 " %13" PRIu64 " "
+           "%13" PRIu64 "\n ",
+           i, kni_port_params_array[i]->lcore_kni_mii_rx,
+           kni_port_params_array[i]->lcore_kni_mii_tx, get_kni_stats()[i].xgmii_rx_packets[1],
+           get_kni_stats()[i].xgmii_rx_dropped[1], get_kni_stats()[i].xgmii_tx_packets[1],
+           get_kni_stats()[i].xgmii_tx_dropped[1]);
   }
   printf("======  ==============  ============  ============  ============  "
          "============\n");
@@ -262,7 +297,7 @@ int main_loop(__rte_unused void *arg) {
         break;
       if (f_pause)
         continue;
-      xgmii_to_mbuf(&eth_pkt_start, get_vtop_eth_tx_ring(), eth_tx_ring, pktmbuf_pool);
+      xgmii_to_mbuf(&eth_pkt_start, get_vtop_eth_tx_ring(), eth_tx_ring, pktmbuf_pool, 0);
     }
   } else if (flag == LCORE_ETH_XGMII_RX) {
     RTE_LOG(INFO, APP, "Lcore %u is converting Ethernet XGMII RX\n",
@@ -274,7 +309,7 @@ int main_loop(__rte_unused void *arg) {
         break;
       if (f_pause)
         continue;
-      mbuf_to_xgmii(eth_rx_ring, get_vtop_eth_rx_ring(), xgmii_pool);
+      mbuf_to_xgmii(eth_rx_ring, get_vtop_eth_rx_ring(), xgmii_pool, 0);
     }
   } else if (flag == LCORE_KNI_XGMII_TX) {
     RTE_LOG(INFO, APP, "Lcore %u is converting PCIe XGMII TX\n",
@@ -286,7 +321,7 @@ int main_loop(__rte_unused void *arg) {
         break;
       if (f_pause)
         continue;
-      xgmii_to_mbuf(&pci_pkt_start, get_vtop_pci_tx_ring(), kni_tx_ring, pktmbuf_pool);
+      xgmii_to_mbuf(&pci_pkt_start, get_vtop_pci_tx_ring(), kni_tx_ring, pktmbuf_pool, 1);
     }
   } else if (flag == LCORE_KNI_XGMII_RX) {
     RTE_LOG(INFO, APP, "Lcore %u is converting PCIe XGMII RX\n",
@@ -298,7 +333,7 @@ int main_loop(__rte_unused void *arg) {
         break;
       if (f_pause)
         continue;
-      mbuf_to_xgmii(kni_rx_ring, get_vtop_pci_rx_ring(), xgmii_pool);
+      mbuf_to_xgmii(kni_rx_ring, get_vtop_pci_rx_ring(), xgmii_pool, 1);
     }
   } else if (flag == LCORE_VTOP) {
     RTE_LOG(INFO, APP, "Lcore %u is running Verilator sim\n",

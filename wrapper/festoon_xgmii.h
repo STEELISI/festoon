@@ -7,8 +7,8 @@
 #include "festoon_common.h"
 #include "verilated.h"
 
-void mbuf_to_xgmii(rte_ring *mbuf_rx_ring, rte_ring *xgmii_tx_ring, rte_mempool *tx_mempool);
+void mbuf_to_xgmii(rte_ring *mbuf_rx_ring, rte_ring *xgmii_tx_ring, rte_mempool *tx_mempool, uint8_t tid);
 
-void xgmii_to_mbuf(bool *pkt_start_entered, rte_ring *xgmii_rx_ring, rte_ring *mbuf_tx_ring, rte_mempool *tx_mempool);
+void xgmii_to_mbuf(bool *pkt_start_entered, rte_ring *xgmii_rx_ring, rte_ring *mbuf_tx_ring, rte_mempool *tx_mempool, uint8_t tid);
 
 #endif
