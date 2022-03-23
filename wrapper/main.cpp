@@ -117,7 +117,7 @@ void print_stats(void) {
 
   printf("\n**Eth XGMII statistics**\n"
          "======  ==============  ============  ============  ============  ============\n"
-         " Port    Lcore(RX/TX)    rx_packets    rx_dropped    tx_packets    tx_dropped\n"
+         " Port    Lcore(RX/TX)   xgmii_frames  xmii_dropped  mbuf_packets  mbuf_dropped\n"
          "------  --------------  ------------  ------------  ------------  ------------\n");
   for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
     if (!kni_port_params_array[i])
@@ -135,7 +135,7 @@ void print_stats(void) {
 
   printf("\n**PCIe XGMII statistics**\n"
          "======  ==============  ============  ============  ============  ============\n"
-         " Port    Lcore(RX/TX)    rx_packets    rx_dropped    tx_packets    tx_dropped\n"
+         " Port    Lcore(RX/TX)   xgmii_frames  xmii_dropped  mbuf_packets  mbuf_dropped\n"
          "------  --------------  ------------  ------------  ------------  ------------\n");
   for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
     if (!kni_port_params_array[i])
@@ -988,14 +988,10 @@ int kni_alloc(uint16_t port_id) {
 
 void init_worker_buffers() {
   // Generate TX and RX queues for pkt_mbufs
-  eth_tx_ring = rte_ring_create("eth ring TX", PKT_BURST_SZ, rte_socket_id(),
-                                RING_F_SP_ENQ | RING_F_SC_DEQ);
-  eth_rx_ring = rte_ring_create("eth ring RX", PKT_BURST_SZ, rte_socket_id(),
-                                RING_F_SP_ENQ | RING_F_SC_DEQ);
-  kni_tx_ring = rte_ring_create("kni ring TX", PKT_BURST_SZ, rte_socket_id(),
-                                RING_F_SP_ENQ | RING_F_SC_DEQ);
-  kni_rx_ring = rte_ring_create("kni ring RX", PKT_BURST_SZ, rte_socket_id(),
-                                RING_F_SP_ENQ | RING_F_SC_DEQ);
+  eth_tx_ring = rte_ring_create("eth ring TX", PKT_RING_SZ, rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
+  eth_rx_ring = rte_ring_create("eth ring RX", PKT_RING_SZ, rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
+  kni_tx_ring = rte_ring_create("kni ring TX", PKT_RING_SZ, rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
+  kni_rx_ring = rte_ring_create("kni ring RX", PKT_RING_SZ, rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
 }
 
 void free_worker_buffers() {

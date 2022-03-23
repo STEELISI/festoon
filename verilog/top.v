@@ -16,6 +16,7 @@ module top (
 );
 
 crossbar crossbar_rx_inst (
+  .clk(clk),
   .eth_in_xgmii_ctrl(eth_in_xgmii_ctrl),
   .eth_in_xgmii_data(eth_in_xgmii_data),
   .eth_out_xgmii_ctrl(pcie_out_xgmii_ctrl),
@@ -23,6 +24,7 @@ crossbar crossbar_rx_inst (
 );
 
 crossbar crossbar_tx_inst (
+  .clk(clk),
   .eth_in_xgmii_ctrl(pcie_in_xgmii_ctrl),
   .eth_in_xgmii_data(pcie_in_xgmii_data),
   .eth_out_xgmii_ctrl(eth_out_xgmii_ctrl),

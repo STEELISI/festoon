@@ -24,17 +24,17 @@ vluint64_t main_time = 0;
 
 void init_verilated_top(rte_mempool *mp) {
   // Generate TX and RX queues for XGMII Ethernet
-  xgm_eth_rx_ring = rte_ring_create("XGMII eth tx", XGMII_BURST_SZ, rte_socket_id(), RING_F_SC_DEQ);
+  xgm_eth_rx_ring = rte_ring_create("XGMII eth tx", XGMII_RING_SZ, rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
   if (xgm_eth_rx_ring == nullptr) throw runtime_error(rte_strerror(rte_errno));
 
-  xgm_eth_tx_ring = rte_ring_create("XGMII eth rx", XGMII_BURST_SZ, rte_socket_id(), RING_F_SC_DEQ);
+  xgm_eth_tx_ring = rte_ring_create("XGMII eth rx", XGMII_RING_SZ, rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
   if (xgm_eth_tx_ring == nullptr) throw runtime_error(rte_strerror(rte_errno));
 
   // Generate TX and RX queues for XGMII PCIe
-  xgm_pci_tx_ring = rte_ring_create("XGMII pcie tx", XGMII_BURST_SZ, rte_socket_id(), RING_F_SC_DEQ);
+  xgm_pci_tx_ring = rte_ring_create("XGMII pci tx", XGMII_RING_SZ, rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
   if (xgm_pci_tx_ring == nullptr) throw runtime_error(rte_strerror(rte_errno));
 
-  xgm_pci_rx_ring = rte_ring_create("XGMII pcie rx", XGMII_BURST_SZ, rte_socket_id(), RING_F_SC_DEQ);
+  xgm_pci_rx_ring = rte_ring_create("XGMII pci rx", XGMII_RING_SZ, rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
   if (xgm_pci_rx_ring == nullptr) throw runtime_error(rte_strerror(rte_errno));
 
   vtop_mempool = mp;
@@ -99,13 +99,10 @@ void verilator_top_worker() {
         pci_fr = rte_pktmbuf_alloc(vtop_mempool);
       }
 
-      /*
-      cout << "eth_in_xgmii_ctrl: " << hex << top->eth_in_xgmii_ctrl << endl;
-      cout << "eth_in_xgmii_data: " << hex << top->eth_in_xgmii_data << endl;
-      cout << "pcie_in_xgmii_ctrl: " << hex << top->pcie_in_xgmii_ctrl << endl;
-      cout << "pcie_in_xgmii_data: " << hex << top->pcie_in_xgmii_data << endl;
-      */
-
+      // Toggle clock
+      top->clk = 1;
+    }
+    if ((main_time % 10) == 6) {
       // Convert Verilator outputs into frame
       *rte_pktmbuf_mtod(eth_fr, CData *) = top->eth_out_xgmii_ctrl;
       *rte_pktmbuf_mtod_offset(eth_fr, QData *, sizeof(CData)) = top->eth_out_xgmii_data;
@@ -113,33 +110,20 @@ void verilator_top_worker() {
       *rte_pktmbuf_mtod(pci_fr, CData *) = top->pcie_out_xgmii_ctrl;
       *rte_pktmbuf_mtod_offset(pci_fr, QData *, sizeof(CData)) = top->pcie_out_xgmii_data;
 
-      /*
-      cout << "eth_out_xgmii_ctrl: " << hex << top->eth_out_xgmii_ctrl << endl;
-      cout << "eth_out_xgmii_data: " << hex << top->eth_out_xgmii_data << endl;
-      cout << "pcie_out_xgmii_ctrl: " << hex << top->pcie_out_xgmii_ctrl << endl;
-      cout << "pcie_out_xgmii_data: " << hex << top->pcie_out_xgmii_data << endl << endl;
-      */
-
-      // Transmit Eth frame each rising clock
+      // Transmit Eth frame
       rte_ring_enqueue(xgm_eth_tx_ring, (void **) eth_fr);
 
-      if (unlikely(eth_nb_tx < 1)) {
-        // Free mbufs not tx to xgm_eth_tx_ring
+      // Free mbufs not tx to xgm_eth_tx_ring
+      if (unlikely(eth_nb_tx < 1))
         kni_burst_free_mbufs(&eth_fr, 1);
-      }
 
-      // Transmit PCI frame each rising clock
+      // Transmit PCI frame
       rte_ring_enqueue(xgm_pci_tx_ring, (void **) pci_fr);
 
-      if (unlikely(pci_nb_tx < 1)) {
-        // Free mbufs not tx to xgm_pci_tx_ring
+      // Free mbufs not tx to xgm_pci_tx_ring
+      if (unlikely(pci_nb_tx < 1))
         kni_burst_free_mbufs(&pci_fr, 1);
-      }
 
-      // Toggle clock
-      top->clk = 1;
-    }
-    if ((main_time % 10) == 6) {
       // Toggle clock
       top->clk = 0;
     }

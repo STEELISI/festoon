@@ -18,6 +18,9 @@
 /* How many packets to attempt to read from NIC in one go */
 #define PKT_BURST_SZ 32
 
+/* Size of mbuf ring buffers */
+#define PKT_RING_SZ 32 * PKT_BURST_SZ
+
 /* How many objects (mbufs) to keep in per-lcore mempool cache */
 #define MEMPOOL_CACHE_SZ PKT_BURST_SZ
 
@@ -29,6 +32,9 @@
 
 /* Size of the data buffer in each mbuf */
 #define XGMII_MBUF_SZ (64 + 8 + RTE_PKTMBUF_HEADROOM)
+
+/* Size of XGMII ring buffers */
+#define XGMII_RING_SZ 32 * XGMII_BURST_SZ
 
 /* Number of RX ring descriptors */
 #define NB_RXD 2048
