@@ -24,17 +24,17 @@ vluint64_t main_time = 0;
 
 void init_verilated_top(rte_mempool *mp) {
   // Generate TX and RX queues for XGMII Ethernet
-  xgm_eth_rx_ring = rte_ring_create("XGMII eth tx", XGMII_RING_SZ, rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
+  xgm_eth_rx_ring = rte_ring_create("XGMII eth tx", XGMII_RING_SZ, rte_socket_id(), RING_F_SP_ENQ);
   if (xgm_eth_rx_ring == nullptr) throw runtime_error(rte_strerror(rte_errno));
 
-  xgm_eth_tx_ring = rte_ring_create("XGMII eth rx", XGMII_RING_SZ, rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
+  xgm_eth_tx_ring = rte_ring_create("XGMII eth rx", XGMII_RING_SZ, rte_socket_id(), RING_F_SP_ENQ);
   if (xgm_eth_tx_ring == nullptr) throw runtime_error(rte_strerror(rte_errno));
 
   // Generate TX and RX queues for XGMII PCIe
-  xgm_pci_tx_ring = rte_ring_create("XGMII pci tx", XGMII_RING_SZ, rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
+  xgm_pci_tx_ring = rte_ring_create("XGMII pci tx", XGMII_RING_SZ, rte_socket_id(), RING_F_SP_ENQ);
   if (xgm_pci_tx_ring == nullptr) throw runtime_error(rte_strerror(rte_errno));
 
-  xgm_pci_rx_ring = rte_ring_create("XGMII pci rx", XGMII_RING_SZ, rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
+  xgm_pci_rx_ring = rte_ring_create("XGMII pci rx", XGMII_RING_SZ, rte_socket_id(), RING_F_SP_ENQ);
   if (xgm_pci_rx_ring == nullptr) throw runtime_error(rte_strerror(rte_errno));
 
   vtop_mempool = mp;
@@ -66,13 +66,16 @@ void init_verilated_top(rte_mempool *mp) {
 
 // Run the Verilator module as a worker thread
 void verilator_top_worker() {
-  rte_mbuf *eth_fr __rte_cache_aligned,
-           *pci_fr __rte_cache_aligned;
-  int i, eth_nb_rx, pci_nb_rx, eth_nb_tx, pci_nb_tx;
+  rte_mbuf *eth_fr[1] __rte_cache_aligned,
+           *pci_fr[1] __rte_cache_aligned;
+  int i, eth_nb_rx, pci_nb_rx, eth_nb_tx = 0, pci_nb_tx = 0;
 
   // Loop for a clock cycle and deque + queue XGMII frames
   for (i = 0; i < 10; i++) {
-    if (Verilated::gotFinish()) return;
+    if (Verilated::gotFinish()) {
+      RTE_LOG(INFO, APP, "Verilator simulation finished\n");
+      return;
+    }
 
     if ((main_time % 10) == 1) {
       // Read Eth frame each rising clock
@@ -81,12 +84,12 @@ void verilator_top_worker() {
       // Read PCI frame each rising clock
       pci_nb_rx = rte_ring_dequeue(xgm_pci_rx_ring, (void **)&pci_fr);
 
-      if (unlikely(eth_fr != nullptr && pci_fr != nullptr)) {
+      if (unlikely(eth_fr[0] != nullptr && pci_fr[0] != nullptr)) {
         // If both good, update input wires
-        top->eth_in_xgmii_ctrl = *rte_pktmbuf_mtod(eth_fr, CData *);
-        top->eth_in_xgmii_data = *rte_pktmbuf_mtod_offset(eth_fr, QData *, sizeof(CData));
-        top->pcie_in_xgmii_ctrl = *rte_pktmbuf_mtod(pci_fr, CData *);
-        top->pcie_in_xgmii_data = *rte_pktmbuf_mtod_offset(pci_fr, QData *, sizeof(CData));
+        top->eth_in_xgmii_ctrl = *rte_pktmbuf_mtod(eth_fr[0], CData *);
+        top->eth_in_xgmii_data = *rte_pktmbuf_mtod_offset(eth_fr[0], QData *, sizeof(CData));
+        top->pcie_in_xgmii_ctrl = *rte_pktmbuf_mtod(pci_fr[0], CData *);
+        top->pcie_in_xgmii_data = *rte_pktmbuf_mtod_offset(pci_fr[0], QData *, sizeof(CData));
       } else {
         // Send in a blank frame
         top->eth_in_xgmii_ctrl = 0b00000000;
@@ -95,8 +98,8 @@ void verilator_top_worker() {
         top->pcie_in_xgmii_data = 0x0707070707070707;
 
         // Alloc new rte_mbufs
-        eth_fr = rte_pktmbuf_alloc(vtop_mempool);
-        pci_fr = rte_pktmbuf_alloc(vtop_mempool);
+        eth_fr[0] = rte_pktmbuf_alloc(vtop_mempool);
+        pci_fr[0] = rte_pktmbuf_alloc(vtop_mempool);
       }
 
       // Toggle clock
@@ -104,25 +107,26 @@ void verilator_top_worker() {
     }
     if ((main_time % 10) == 6) {
       // Convert Verilator outputs into frame
-      *rte_pktmbuf_mtod(eth_fr, CData *) = top->eth_out_xgmii_ctrl;
-      *rte_pktmbuf_mtod_offset(eth_fr, QData *, sizeof(CData)) = top->eth_out_xgmii_data;
-
-      *rte_pktmbuf_mtod(pci_fr, CData *) = top->pcie_out_xgmii_ctrl;
-      *rte_pktmbuf_mtod_offset(pci_fr, QData *, sizeof(CData)) = top->pcie_out_xgmii_data;
+      *rte_pktmbuf_mtod(eth_fr[0], CData *) = top->eth_out_xgmii_ctrl;
+      *rte_pktmbuf_mtod_offset(eth_fr[0], QData *, sizeof(CData)) = top->eth_out_xgmii_data;
 
       // Transmit Eth frame
-      rte_ring_enqueue(xgm_eth_tx_ring, (void **) eth_fr);
+      eth_nb_tx = rte_ring_enqueue_bulk(xgm_eth_tx_ring, (void **) eth_fr, 1, nullptr);
+
+      // Convert Verilator outputs into frame
+      *rte_pktmbuf_mtod(pci_fr[0], CData *) = top->pcie_out_xgmii_ctrl;
+      *rte_pktmbuf_mtod_offset(pci_fr[0], QData *, sizeof(CData)) = top->pcie_out_xgmii_data;
+
+      // Transmit PCI frame
+      pci_nb_tx = rte_ring_enqueue_bulk(xgm_pci_tx_ring, (void **) pci_fr, 1, nullptr);
 
       // Free mbufs not tx to xgm_eth_tx_ring
       if (unlikely(eth_nb_tx < 1))
-        kni_burst_free_mbufs(&eth_fr, 1);
-
-      // Transmit PCI frame
-      rte_ring_enqueue(xgm_pci_tx_ring, (void **) pci_fr);
+        kni_burst_free_mbufs(&eth_fr[0], 1);
 
       // Free mbufs not tx to xgm_pci_tx_ring
       if (unlikely(pci_nb_tx < 1))
-        kni_burst_free_mbufs(&pci_fr, 1);
+        kni_burst_free_mbufs(&pci_fr[0], 1);
 
       // Toggle clock
       top->clk = 0;
@@ -152,3 +156,4 @@ rte_ring *get_vtop_eth_tx_ring() { return xgm_eth_tx_ring; }
 rte_ring *get_vtop_pci_rx_ring() { return xgm_pci_rx_ring; }
 
 rte_ring *get_vtop_pci_tx_ring() { return xgm_pci_tx_ring; }
+

@@ -71,8 +71,6 @@ int kni_config_mac_address(uint16_t port_id, uint8_t mac_addr[]);
 
 uint32_t kni_stop, kni_pause;
 
-bool eth_pkt_start, pci_pkt_start;
-
 rte_ring *eth_tx_ring, *eth_rx_ring, *kni_tx_ring, *kni_rx_ring;
 
 /* Print out statistics on packets handled */
@@ -80,76 +78,72 @@ void print_stats(void) {
   uint16_t i;
 
   printf("\n**ETH statistics**\n"
-         "======  ==============  ============  ============  ============  ============\n"
-         " Port    Lcore(RX/TX)    rx_packets    rx_dropped    tx_packets    tx_dropped\n"
-         "------  --------------  ------------  ------------  ------------  ------------\n");
+         " ======  ==============  ============  ============  ============  ============\n"
+         "  Port    Lcore(RX/TX)    rx_packets    rx_dropped    tx_packets    tx_dropped\n"
+         " ------  --------------  ------------  ------------  ------------  ------------\n");
   for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
     if (!kni_port_params_array[i])
       continue;
 
     printf("%7d %10u/%2u %13" PRIu64 " %13" PRIu64 " %13" PRIu64 " "
-           "%13" PRIu64 "\n ",
+           "%13" PRIu64 "\n",
            i, kni_port_params_array[i]->lcore_eth_rx,
            kni_port_params_array[i]->lcore_eth_tx, get_kni_stats()[i].eth_rx_packets,
            get_kni_stats()[i].eth_rx_dropped, get_kni_stats()[i].eth_tx_packets,
            get_kni_stats()[i].eth_tx_dropped);
   }
-  printf("======  ==============  ============  ============  ============  "
-         "============\n");
+  printf(" ======  ==============  ============  ============  ============  ============\n");
 
   printf("\n**KNI statistics**\n"
-         "======  ==============  ============  ============  ============  ============\n"
-         " Port    Lcore(RX/TX)    rx_packets    rx_dropped    tx_packets    tx_dropped\n"
-         "------  --------------  ------------  ------------  ------------  ------------\n");
+         " ======  ==============  ============  ============  ============  ============\n"
+         "  Port    Lcore(RX/TX)    rx_packets    rx_dropped    tx_packets    tx_dropped\n"
+         " ------  --------------  ------------  ------------  ------------  ------------\n");
   for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
     if (!kni_port_params_array[i])
       continue;
 
     printf("%7d %10u/%2u %13" PRIu64 " %13" PRIu64 " %13" PRIu64 " "
-           "%13" PRIu64 "\n ",
+           "%13" PRIu64 "\n",
            i, kni_port_params_array[i]->lcore_kni_rx,
            kni_port_params_array[i]->lcore_kni_tx, get_kni_stats()[i].kni_rx_packets,
            get_kni_stats()[i].kni_rx_dropped, get_kni_stats()[i].kni_tx_packets,
            get_kni_stats()[i].kni_tx_dropped);
   }
-  printf("======  ==============  ============  ============  ============  "
-         "============\n");
+  printf(" ======  ==============  ============  ============  ============  ============\n");
 
   printf("\n**Eth XGMII statistics**\n"
-         "======  ==============  ============  ============  ============  ============\n"
-         " Port    Lcore(RX/TX)   xgmii_frames  xmii_dropped  mbuf_packets  mbuf_dropped\n"
-         "------  --------------  ------------  ------------  ------------  ------------\n");
+         " ======  ==============  ============  ============  ============  ============\n"
+         "  Port    Lcore(RX/TX)   xgmii_frames  xmii_dropped  mbuf_packets  mbuf_dropped\n"
+         " ------  --------------  ------------  ------------  ------------  ------------\n");
   for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
     if (!kni_port_params_array[i])
       continue;
 
     printf("%7d %10u/%2u %13" PRIu64 " %13" PRIu64 " %13" PRIu64 " "
-           "%13" PRIu64 "\n ",
+           "%13" PRIu64 "\n",
            i, kni_port_params_array[i]->lcore_eth_mii_rx,
            kni_port_params_array[i]->lcore_eth_mii_tx, get_kni_stats()[i].xgmii_rx_packets[0],
            get_kni_stats()[i].xgmii_rx_dropped[0], get_kni_stats()[i].xgmii_tx_packets[0],
            get_kni_stats()[i].xgmii_tx_dropped[0]);
   }
-  printf("======  ==============  ============  ============  ============  "
-         "============\n");
+  printf(" ======  ==============  ============  ============  ============  ============\n");
 
   printf("\n**PCIe XGMII statistics**\n"
-         "======  ==============  ============  ============  ============  ============\n"
-         " Port    Lcore(RX/TX)   xgmii_frames  xmii_dropped  mbuf_packets  mbuf_dropped\n"
-         "------  --------------  ------------  ------------  ------------  ------------\n");
+         " ======  ==============  ============  ============  ============  ============\n"
+         "  Port    Lcore(RX/TX)   xgmii_frames  xmii_dropped  mbuf_packets  mbuf_dropped\n"
+         " ------  --------------  ------------  ------------  ------------  ------------\n");
   for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
     if (!kni_port_params_array[i])
       continue;
 
     printf("%7d %10u/%2u %13" PRIu64 " %13" PRIu64 " %13" PRIu64 " "
-           "%13" PRIu64 "\n ",
+           "%13" PRIu64 "\n",
            i, kni_port_params_array[i]->lcore_kni_mii_rx,
            kni_port_params_array[i]->lcore_kni_mii_tx, get_kni_stats()[i].xgmii_rx_packets[1],
            get_kni_stats()[i].xgmii_rx_dropped[1], get_kni_stats()[i].xgmii_tx_packets[1],
            get_kni_stats()[i].xgmii_tx_dropped[1]);
   }
-  printf("======  ==============  ============  ============  ============  "
-         "============\n");
+  printf(" ======  ==============  ============  ============  ============  ============\n");
 
   fflush(stdout);
 }
@@ -297,7 +291,7 @@ int main_loop(__rte_unused void *arg) {
         break;
       if (f_pause)
         continue;
-      xgmii_to_mbuf(&eth_pkt_start, get_vtop_eth_tx_ring(), eth_tx_ring, pktmbuf_pool, 0);
+      xgmii_to_mbuf(get_vtop_eth_tx_ring(), eth_tx_ring, pktmbuf_pool, 0);
     }
   } else if (flag == LCORE_ETH_XGMII_RX) {
     RTE_LOG(INFO, APP, "Lcore %u is converting Ethernet XGMII RX\n",
@@ -321,7 +315,7 @@ int main_loop(__rte_unused void *arg) {
         break;
       if (f_pause)
         continue;
-      xgmii_to_mbuf(&pci_pkt_start, get_vtop_pci_tx_ring(), kni_tx_ring, pktmbuf_pool, 1);
+      xgmii_to_mbuf(get_vtop_pci_tx_ring(), kni_tx_ring, pktmbuf_pool, 1);
     }
   } else if (flag == LCORE_KNI_XGMII_RX) {
     RTE_LOG(INFO, APP, "Lcore %u is converting PCIe XGMII RX\n",
@@ -988,10 +982,10 @@ int kni_alloc(uint16_t port_id) {
 
 void init_worker_buffers() {
   // Generate TX and RX queues for pkt_mbufs
-  eth_tx_ring = rte_ring_create("eth ring TX", PKT_RING_SZ, rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
-  eth_rx_ring = rte_ring_create("eth ring RX", PKT_RING_SZ, rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
-  kni_tx_ring = rte_ring_create("kni ring TX", PKT_RING_SZ, rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
-  kni_rx_ring = rte_ring_create("kni ring RX", PKT_RING_SZ, rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
+  eth_tx_ring = rte_ring_create("eth ring TX", PKT_RING_SZ, rte_socket_id(), RING_F_SP_ENQ);
+  eth_rx_ring = rte_ring_create("eth ring RX", PKT_RING_SZ, rte_socket_id(), RING_F_SP_ENQ);
+  kni_tx_ring = rte_ring_create("kni ring TX", PKT_RING_SZ, rte_socket_id(), RING_F_SP_ENQ);
+  kni_rx_ring = rte_ring_create("kni ring RX", PKT_RING_SZ, rte_socket_id(), RING_F_SP_ENQ);
 }
 
 void free_worker_buffers() {
@@ -1106,9 +1100,9 @@ int main(int argc, char **argv) {
   pid = getpid();
   RTE_LOG(INFO, APP, "========================\n");
   RTE_LOG(INFO, APP, "KNI Running\n");
-  RTE_LOG(INFO, APP, "kill -SIGUSR1 %d\n", pid);
+  RTE_LOG(INFO, APP, "kill -USR1 %d\n", pid);
   RTE_LOG(INFO, APP, "    Show KNI Statistics.\n");
-  RTE_LOG(INFO, APP, "kill -SIGUSR2 %d\n", pid);
+  RTE_LOG(INFO, APP, "kill -USR2 %d\n", pid);
   RTE_LOG(INFO, APP, "    Zero KNI Statistics.\n");
   RTE_LOG(INFO, APP, "========================\n");
   fflush(stdout);
