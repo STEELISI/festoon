@@ -59,7 +59,7 @@ void mbuf_to_xgmii(rte_ring *mbuf_rx_ring, rte_ring *xgmii_tx_ring, rte_mempool 
         rte_memcpy(rte_pktmbuf_mtod_offset(xgm_buf[xgm_buf_counter], void *, 1),
                    rte_pktmbuf_mtod_offset(pkts_burst[i], void *, it * sizeof(QData)),
                    sizeof(QData));
-        *rte_pktmbuf_mtod(xgm_buf[xgm_buf_counter], CData *) = 0b11111111;
+        *rte_pktmbuf_mtod(xgm_buf[xgm_buf_counter], CData *) = 0b00000000;
       }
 
       xgm_buf_counter++;

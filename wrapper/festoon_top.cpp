@@ -5,7 +5,6 @@
 #include <rte_mbuf.h>
 #include <rte_ring.h>
 
-#include <iostream>
 #include <stdexcept>
 
 #include "festoon_common.h"
@@ -79,33 +78,43 @@ void verilator_top_worker() {
 
     if ((main_time % 10) == 1) {
       // Read Eth frame each rising clock
-      eth_nb_rx = rte_ring_dequeue(xgm_eth_rx_ring, (void **)&eth_fr);
+      eth_nb_rx = rte_ring_dequeue_bulk(xgm_eth_rx_ring, (void **)&eth_fr, 1, nullptr);
 
-      // Read PCI frame each rising clock
-      pci_nb_rx = rte_ring_dequeue(xgm_pci_rx_ring, (void **)&pci_fr);
-
-      if (unlikely(eth_fr[0] != nullptr && pci_fr[0] != nullptr)) {
-        // If both good, update input wires
+      if (likely(eth_nb_rx == 1)) {
+        // If good, update input wires
         top->eth_in_xgmii_ctrl = *rte_pktmbuf_mtod(eth_fr[0], CData *);
         top->eth_in_xgmii_data = *rte_pktmbuf_mtod_offset(eth_fr[0], QData *, sizeof(CData));
-        top->pcie_in_xgmii_ctrl = *rte_pktmbuf_mtod(pci_fr[0], CData *);
-        top->pcie_in_xgmii_data = *rte_pktmbuf_mtod_offset(pci_fr[0], QData *, sizeof(CData));
       } else {
         // Send in a blank frame
         top->eth_in_xgmii_ctrl = 0b00000000;
         top->eth_in_xgmii_data = 0x0707070707070707;
+
+        // Alloc new rte_mbufs
+        eth_fr[0] = rte_pktmbuf_alloc(vtop_mempool);
+      }
+
+      // Read PCI frame each rising clock
+      pci_nb_rx = rte_ring_dequeue_bulk(xgm_pci_rx_ring, (void **)&pci_fr, 1, nullptr);
+
+      if (likely(pci_nb_rx == 1)) {
+        // If good, update input wires
+        top->pcie_in_xgmii_ctrl = *rte_pktmbuf_mtod(pci_fr[0], CData *);
+        top->pcie_in_xgmii_data = *rte_pktmbuf_mtod_offset(pci_fr[0], QData *, sizeof(CData));
+      } else {
+        // Send in a blank frame
         top->pcie_in_xgmii_ctrl = 0b00000000;
         top->pcie_in_xgmii_data = 0x0707070707070707;
 
         // Alloc new rte_mbufs
-        eth_fr[0] = rte_pktmbuf_alloc(vtop_mempool);
         pci_fr[0] = rte_pktmbuf_alloc(vtop_mempool);
       }
 
       // Toggle clock
       top->clk = 1;
-    }
-    if ((main_time % 10) == 6) {
+    } else if ((main_time % 10) == 6) {
+      // Toggle clock
+      top->clk = 0;
+    } else if ((main_time % 10) == 9) {
       // Convert Verilator outputs into frame
       *rte_pktmbuf_mtod(eth_fr[0], CData *) = top->eth_out_xgmii_ctrl;
       *rte_pktmbuf_mtod_offset(eth_fr[0], QData *, sizeof(CData)) = top->eth_out_xgmii_data;
@@ -127,9 +136,6 @@ void verilator_top_worker() {
       // Free mbufs not tx to xgm_pci_tx_ring
       if (unlikely(pci_nb_tx < 1))
         kni_burst_free_mbufs(&pci_fr[0], 1);
-
-      // Toggle clock
-      top->clk = 0;
     }
 
     top->eval();  // Evaluate model
@@ -156,4 +162,3 @@ rte_ring *get_vtop_eth_tx_ring() { return xgm_eth_tx_ring; }
 rte_ring *get_vtop_pci_rx_ring() { return xgm_pci_rx_ring; }
 
 rte_ring *get_vtop_pci_tx_ring() { return xgm_pci_tx_ring; }
-
