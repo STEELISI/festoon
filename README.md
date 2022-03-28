@@ -35,4 +35,8 @@ to PCI RX, and PCI TX to Ethernet TX. This can be easily modified as long as the
 the DPDK wrapper is done with a modified XGMII with 8 control bits and 64 data
 bits instead of 4 and 32 respectively. By default, the `CMakeLists.txt` in the
 directory will automatically include any Verilog files added into the top-level
-`verilog` directory, but subdirectories will need to be added manually.
+`verilog` directory, but subdirectories will need to be added manually. See the
+`verilog` directory for more details.
+
+*This project is part of [Haoda Wang](https://github.com/h313)'s undergraduate
+thesis project*
