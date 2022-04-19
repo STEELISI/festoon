@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <rte_byteorder.h>
 #include <rte_errno.h>
 #include <rte_malloc.h>
@@ -56,9 +57,8 @@ void mbuf_to_xgmii(rte_ring *mbuf_rx_ring, rte_ring *xgmii_tx_ring, rte_mempool 
                    frame_size);
         *rte_pktmbuf_mtod(xgm_buf[xgm_buf_counter], CData *) = ~((1 << frame_size) - 1);
       } else {
-        rte_memcpy(rte_pktmbuf_mtod_offset(xgm_buf[xgm_buf_counter], void *, 1),
-                   rte_pktmbuf_mtod_offset(pkts_burst[i], void *, it * sizeof(QData)),
-                   sizeof(QData));
+        rte_mov64(rte_pktmbuf_mtod_offset(xgm_buf[xgm_buf_counter], uint8_t *, 1),
+                  rte_pktmbuf_mtod_offset(pkts_burst[i], uint8_t *, it * sizeof(QData)));
         *rte_pktmbuf_mtod(xgm_buf[xgm_buf_counter], CData *) = 0b00000000;
       }
 

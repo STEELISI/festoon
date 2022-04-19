@@ -6,8 +6,8 @@ find_package(Threads REQUIRED)
 find_package(verilator REQUIRED HINTS $ENV{VERILATOR_ROOT})
 pkg_search_module(DPDK REQUIRED libdpdk)
 
-set(CMAKE_C_FLAGS ${DPDK_CFLAGS})
-set(CMAKE_CXX_FLAGS "-mssse3 -O3")
+set(CMAKE_C_FLAGS "${DPDK_CFLAGS} -mssse3 -O3 -march=native")
+set(CMAKE_CXX_FLAGS "-mssse3 -O3 -march=native")
 
 include(verilog/CMakeLists.txt)
 
